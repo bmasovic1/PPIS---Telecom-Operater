@@ -1,0 +1,16 @@
+{
+  "name": "telecom-itsm-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:win": "concurrently \"npm.cmd --prefix backend run dev\" \"npm.cmd --prefix frontend run dev\"",
+    "dev:backend:win": "npm.cmd --prefix backend run dev",
+    "dev:frontend:win": "npm.cmd --prefix frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
