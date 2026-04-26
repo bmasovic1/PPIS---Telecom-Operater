@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api/client';
 
 const initialState = {
@@ -14,6 +14,42 @@ export default function RFCForm({ onCreated }) {
   const [form, setForm] = useState(initialState);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadUsers = async () => {
+      try {
+        const data = await api.getUsers();
+        if (alive) {
+          setUsers(data.filter((user) => user.status === 'aktivan'));
+        }
+      } catch (error) {
+        if (alive) {
+          setMessage(error.message);
+        }
+      } finally {
+        if (alive) {
+          setUsersLoading(false);
+        }
+      }
+    };
+
+    loadUsers();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const requesterOptions = useMemo(() => {
+    return users.map((user) => ({
+      value: String(user.id),
+      label: `${user.ime} ${user.prezime} · ${user.email}`,
+    }));
+  }, [users]);
 
   const onChange = (event) => {
     const { name, value } = event.target;
@@ -50,11 +86,16 @@ export default function RFCForm({ onCreated }) {
 
   return (
     <section className="panel">
-      <h3>Create Change Request</h3>
+      <h3 className="section-title">Create Change Request</h3>
       <form className="form-grid" onSubmit={onSubmit}>
         <label>
-          Requester ID
-          <input name="kreirao_id" value={form.kreirao_id} onChange={onChange} required />
+          Requester
+          <select name="kreirao_id" value={form.kreirao_id} onChange={onChange} required disabled={usersLoading}>
+            <option value="">{usersLoading ? 'Loading users...' : 'Select requester'}</option>
+            {requesterOptions.map((user) => (
+              <option key={user.value} value={user.value}>{user.label}</option>
+            ))}
+          </select>
         </label>
         <label>
           Request Title
@@ -63,9 +104,9 @@ export default function RFCForm({ onCreated }) {
         <label>
           Change Type
           <select name="tip" value={form.tip} onChange={onChange}>
-            <option value="normalna">normalna</option>
-            <option value="standardna">standardna</option>
-            <option value="hitna">hitna</option>
+            <option value="normalna">Normal</option>
+            <option value="standardna">Standard</option>
+            <option value="hitna">Emergency</option>
           </select>
         </label>
         <label>
@@ -81,7 +122,7 @@ export default function RFCForm({ onCreated }) {
           <textarea name="procjena_utjecaja" value={form.procjena_utjecaja} onChange={onChange} rows={3} />
         </label>
         <button className="btn-primary form-action" type="submit" disabled={saving}>
-          {saving ? 'Saving...' : 'Submit Request'}
+          {saving ? 'Saving...' : 'Submit Change'}
         </button>
       </form>
       {message ? <p className="status-line">{message}</p> : null}

@@ -36,6 +36,22 @@ const getProblemTrend = async (req, res) => {
   res.json(rows);
 };
 
+const getProblemMetrics = async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE status NOT IN ('riješen', 'zatvoren'))::int AS open,
+      COUNT(*) FILTER (WHERE status IN ('riješen', 'zatvoren'))::int AS closed,
+      COUNT(*) FILTER (WHERE prioritet = 'P1')::int AS p1,
+      COUNT(*) FILTER (WHERE prioritet = 'P2')::int AS p2,
+      COUNT(*) FILTER (WHERE prioritet = 'P3')::int AS p3,
+      COUNT(*) FILTER (WHERE prioritet = 'P4')::int AS p4
+     FROM problems`
+  );
+
+  res.json(rows[0]);
+};
+
 const getProblemById = async (req, res) => {
   const { id } = req.params;
 
@@ -288,10 +304,33 @@ const updateKedb = async (req, res) => {
   res.json(rows[0]);
 };
 
+const createKedb = async (req, res) => {
+  const { problem_id, workaround, trajni_fix, status } = req.body;
+
+  const missing = requireFields(req.body, ['problem_id', 'workaround', 'trajni_fix', 'status']);
+  if (missing.length) {
+    return res.status(400).json({ error: `Nedostaju obavezna polja: ${missing.join(', ')}` });
+  }
+
+  if (!isPositiveInt(problem_id)) {
+    return res.status(400).json({ error: 'Neispravan problem id.' });
+  }
+
+  const { rows } = await pool.query(
+    `INSERT INTO kedb (problem_id, workaround, trajni_fix, status)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [problem_id, workaround, trajni_fix, status]
+  );
+
+  res.status(201).json(rows[0]);
+};
+
 module.exports = {
   getProblems,
   getActiveProblems,
   getProblemTrend,
+  getProblemMetrics,
   getProblemById,
   createProblem,
   updateProblemRca,
@@ -299,5 +338,6 @@ module.exports = {
   updateProblemIncidents,
   getKedb,
   getKedbById,
+  createKedb,
   updateKedb,
 };

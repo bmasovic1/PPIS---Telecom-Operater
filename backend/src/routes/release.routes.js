@@ -7,9 +7,9 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-router.get('/pipeline', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan'), asyncHandler(releaseController.getPipeline));
-router.get('/rfc', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan'), asyncHandler(releaseController.getRfcs));
-router.get('/rfc/:id', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan'), asyncHandler(releaseController.getRfcById));
+router.get('/pipeline', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getPipeline));
+router.get('/rfc', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getRfcs));
+router.get('/rfc/:id', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getRfcById));
 router.post('/rfc', authorizeRoles('admin', 'release_manager', 'change_manager'), asyncHandler(releaseController.createRfc));
 router.put('/rfc/:id/cab', authorizeRoles('admin', 'change_manager', 'cab_clan'), asyncHandler(releaseController.updateCabDecision));
 router.put('/:id/go-no-go', authorizeRoles('admin', 'release_manager'), asyncHandler(releaseController.updateGoNoGo));
