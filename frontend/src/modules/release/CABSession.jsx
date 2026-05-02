@@ -64,8 +64,8 @@ export default function CABSession({ onUpdated }) {
       <h3 className="section-title">CAB Approval</h3>
       <form className="form-grid compact" onSubmit={submit}>
         <label>
-          Request ID
-          <input value={rfcId} onChange={(event) => setRfcId(event.target.value)} required />
+          RFC ID (from table)
+          <input value={rfcId} onChange={(event) => setRfcId(event.target.value)} placeholder="e.g., 18" required />
         </label>
         <label>
           Decision

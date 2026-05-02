@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '../../api/client';
+import { api, authStorage } from '../../api/client';
 import RFCForm from './RFCForm';
 import CABSession from './CABSession';
 import PostDeployMonitor from './PostDeployMonitor';
@@ -68,6 +68,34 @@ export default function ReleaseDashboard() {
     loadPipeline();
   }, []);
 
+  const getRoleFromToken = () => {
+    try {
+      const token = authStorage.getToken();
+      if (!token) return null;
+      const payload = token.split('.')[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = JSON.parse(atob(padded));
+      return decoded?.uloga || decoded?.role || null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const role = getRoleFromToken();
+
+  const canViewOverview = ['admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'].includes(role);
+  const canViewNewRequest = ['change_manager', 'devops', 'admin'].includes(role);
+  const canViewCab = ['cab_clan', 'admin'].includes(role);
+  const canViewDeploy = ['release_manager', 'devops', 'qa_inzenjer', 'admin'].includes(role);
+
+  useEffect(() => {
+    // Prevent direct access to views the role shouldn't see
+    if (activeView === 'create' && !canViewNewRequest) setActiveView('pipeline');
+    if (activeView === 'cab' && !canViewCab) setActiveView('pipeline');
+    if (activeView === 'deploy' && !canViewDeploy) setActiveView('pipeline');
+  }, [activeView, canViewNewRequest, canViewCab, canViewDeploy]);
+
   const filteredPipeline = [...pipeline]
     .filter((item) => (cabFilter === 'all' ? true : (item.cab_odluka || 'na_cekanju') === cabFilter))
     .filter((item) => (goFilter === 'all' ? true : (item.go_no_go || 'na_cekanju') === goFilter))
@@ -132,10 +160,18 @@ export default function ReleaseDashboard() {
       </section>
 
       <section className="panel view-switch">
-        <button className={activeView === 'pipeline' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('pipeline')}>Overview</button>
-        <button className={activeView === 'create' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('create')}>New Request</button>
-        <button className={activeView === 'cab' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('cab')}>CAB Approval</button>
-        <button className={activeView === 'deploy' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('deploy')}>Deployment Review</button>
+        {canViewOverview ? (
+          <button className={activeView === 'pipeline' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('pipeline')}>Overview</button>
+        ) : null}
+        {canViewNewRequest ? (
+          <button className={activeView === 'create' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('create')}>New Request</button>
+        ) : null}
+        {canViewCab ? (
+          <button className={activeView === 'cab' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('cab')}>CAB Approval</button>
+        ) : null}
+        {canViewDeploy ? (
+          <button className={activeView === 'deploy' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('deploy')}>Deployment Review</button>
+        ) : null}
       </section>
 
       {activeView === 'create' ? <RFCForm onCreated={loadPipeline} /> : null}
@@ -181,29 +217,46 @@ export default function ReleaseDashboard() {
               <thead>
                 <tr>
                   <th>Release ID</th>
+                  <th>RFC ID</th>
                   <th>RFC</th>
                   <th>Version</th>
                   <th>CAB</th>
                   <th>Go/No-Go</th>
+                  <th>Status</th>
                   <th>Deploy</th>
                   <th>PIR</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredPipeline.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.id}</td>
-                    <td>{item.rfc_naziv}</td>
-                    <td>{item.verzija}</td>
-                    <td><span className={`badge ${getCabBadgeClass(item.cab_odluka)}`}>{cabLabelMap[item.cab_odluka || 'na_cekanju'] || 'Pending'}</span></td>
-                    <td><span className={`badge ${getGoNoGoBadgeClass(item.go_no_go)}`}>{goNoGoLabelMap[item.go_no_go || 'na_cekanju'] || 'Pending'}</span></td>
-                    <td>{item.datum_deploymenta ? new Date(item.datum_deploymenta).toLocaleString() : '-'}</td>
-                    <td><span className={`badge ${getPirBadgeClass(item.pir_status)}`}>{pirLabelMap[item.pir_status || 'na_cekanju'] || 'Pending'}</span></td>
-                  </tr>
-                ))}
+                {filteredPipeline.map((item) => {
+                  const isZeroDowntime = item.go_no_go === 'go' && (item.rollback_izvrsen === false || item.rollback_izvrsen === 'false' || !item.rollback_izvrsen);
+                  const hasRollback = item.rollback_izvrsen === true || item.rollback_izvrsen === 'true';
+                  
+                  return (
+                    <tr key={item.id}>
+                      <td>{item.id}</td>
+                      <td>{item.rfc_id || item.change_id}</td>
+                      <td>{item.rfc_naziv}</td>
+                      <td><strong>v{item.verzija}</strong></td>
+                      <td><span className={`badge ${getCabBadgeClass(item.cab_odluka)}`}>{cabLabelMap[item.cab_odluka || 'na_cekanju'] || 'Pending'}</span></td>
+                      <td><span className={`badge ${getGoNoGoBadgeClass(item.go_no_go)}`}>{goNoGoLabelMap[item.go_no_go || 'na_cekanju'] || 'Pending'}</span></td>
+                      <td>
+                        {isZeroDowntime ? (
+                          <span className="badge status-success">✓ Zero Downtime</span>
+                        ) : hasRollback ? (
+                          <span className="badge status-warning">⚠ Rollback Executed</span>
+                        ) : (
+                          <span className="status-muted">-</span>
+                        )}
+                      </td>
+                      <td>{item.datum_deploymenta ? new Date(item.datum_deploymenta).toLocaleString() : '-'}</td>
+                      <td><span className={`badge ${getPirBadgeClass(item.pir_status)}`}>{pirLabelMap[item.pir_status || 'na_cekanju'] || 'Pending'}</span></td>
+                    </tr>
+                  );
+                })}
                 {!filteredPipeline.length ? (
                   <tr>
-                    <td colSpan={7}>No release records match the selected filters.</td>
+                    <td colSpan={9}>No release records match the selected filters.</td>
                   </tr>
                 ) : null}
               </tbody>

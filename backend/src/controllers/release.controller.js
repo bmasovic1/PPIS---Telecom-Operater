@@ -6,6 +6,7 @@ const getPipeline = async (req, res) => {
     `SELECT
        r.id,
        r.change_id,
+       c.id AS rfc_id,
        c.naziv AS rfc_naziv,
        c.tip AS rfc_tip,
        c.status AS rfc_status,
@@ -191,19 +192,55 @@ const updateGoNoGo = async (req, res) => {
     return res.status(400).json({ error: 'go_no_go je obavezan.' });
   }
 
-  const { rows } = await pool.query(
-    `UPDATE releases
-     SET go_no_go = $1
-     WHERE id = $2
-     RETURNING *`,
-    [go_no_go, id]
+  // Check if release exists and get its change_id for CAB decision validation
+  const releaseCheck = await pool.query(
+    `SELECT r.id, r.change_id, r.datum_deploymenta, c.cab_odluka
+     FROM releases r
+     JOIN changes c ON c.id = r.change_id
+     WHERE r.id = $1`,
+    [id]
   );
 
-  if (!rows.length) {
+  if (!releaseCheck.rows.length) {
     return res.status(404).json({ error: 'Release nije pronadjen.' });
   }
 
-  res.json(rows[0]);
+  const { cab_odluka } = releaseCheck.rows[0];
+
+  // Business rule: Go/No-Go can only be set if CAB decision is approved
+  // Accept both 'odobreno' and 'Approved' values
+  const isApproved = cab_odluka === 'odobreno' || cab_odluka === 'Approved';
+  
+  if (!isApproved) {
+    return res.status(400).json({ 
+      error: 'Go/No-Go se može postaviti samo nakon što je CAB odluka postavljena na "Odobreno". Trenutna CAB odluka: ' + (cab_odluka || 'nije postavljena') 
+    });
+  }
+
+  // Additional business rule (DB CHECK): setting Go requires a deployment date
+  if (go_no_go === 'go' && !releaseCheck.rows[0].datum_deploymenta) {
+    return res.status(400).json({ error: 'Postavljanje "Go" zahtijeva nazivani datum deploy-a. Najprije zakazati deployment (Schedule Deployment) ili uključiti "Deployment Date".' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE releases
+       SET go_no_go = $1
+       WHERE id = $2
+       RETURNING *`,
+      [go_no_go, id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Release nije pronadjen.' });
+    }
+
+    res.json(rows[0]);
+  } catch (dbErr) {
+    // If a DB trigger or constraint raises an error, return the message to the client
+    console.error('DB error updating go_no_go for release', id, dbErr.message || dbErr);
+    return res.status(400).json({ error: dbErr.message || 'Poslovna pravila baze su prekršena.' });
+  }
 };
 
 const scheduleDeploy = async (req, res) => {

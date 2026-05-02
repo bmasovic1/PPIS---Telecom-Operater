@@ -1,0 +1,579 @@
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+ 
+UNIVERZITET U SARAJEVU 
+ELEKTROTEHNICKI FAKULTET U SARAJEVU 
+RACUNARSTVO I INFORMATIKA 
+Telecom Operater d.d. 
+ 
+ITSM Informacioni Sistem 
+Release and Deployment Management | Problem Management 
+ 
+Projektovanje informacionih sistema - Praktikum 
+ 
+Studenti: 
+Masovic Berin 
+Prasovic Asmir 
+Dzindo Nedim 
+Hastor Amir 
+Elhattab Yahia Aissa 
+ 
+Profesor: Doc.dr. Tanovic Anel 
+Tim 15 | Sarajevo, 2025. 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+1. Uvod i opis sistema 
+Telecom Operater d.d. je kompanija koja pruzaju usluge mobilne telefonije, fiksne mreze, 
+internet pristupa i digitalnih servisa za vise od 2 miliona pretplatnika u Bosni i Hercegovini. 
+ 
+Informacioni sistem podrzava kljucne poslovne procese: upravljanje korisnickim racunima i 
+tarifnim modelima, pracenje mreznih incidenata i tehnicke podrske. Centralni alat je interno 
+razvijen ITSM web sistem integrisan sa PostgreSQL bazom podataka, koji povezuje sve 
+odjele kroz jedinstven sistem za pracenje zahtjeva, incidenata i problema. 
+ 
+1.1 Unapredjenje postojeceg sistema 
+Polazna osnova projekta bila je jezgra ITSM sistema koja je obuhvatala temeljne entitete: 
+korisnicke racune (users), evidenciju mreznih incidenata (incidents) i katalog 
+telekomunikacijskih usluga (services). Ovaj osnov je omogucio evidenciju dogadjaja u mrezi, 
+ali nije pruzao strukturirane tokove rada za napredne ITIL procese. 
+ 
+U okviru ovog projekta sistem je nadograden sa dva kompletna ITIL modula: 
+• Release and Deployment Management modul: obuhvata kreiranje RFC-a, CAB 
+workflow odobrenje, Go/No-Go odluku, planiranje deploymenta i PIR analizu 
+• Problem Management modul: obuhvata rucno kreiranje Problem Ticketa na osnovu 
+analize incidenata, Root Cause Analysis radni prostor (RCA), Known Error Database 
+(KEDB) sa workaround i permanent fix dokumentacijom, te dashboard s metrikama 
+po prioritetima 
+ 
+Rezultat unapredjenja je funkcionalan, web-baziran ITSM sistem koji podrzava kompletne 
+ITIL tokove rada za oba dodijeljena procesa, sa role-based pristupom za vise korisnickih 
+uloga i direktnom vezom sa PostgreSQL bazom podataka u realnom vremenu. 
+ 
+1.2 Organizacija preduzeca 
+Na celu organizacije nalazi se Upravni odbor koji donosi kljucne strateske odluke. Izvrsni 
+generalni direktor nadgleda pet glavnih organizacionih ogranaka: 
+ 
+• Ogranak za korisnicku podrsku: Recepcija i korisnicki servis, Tehnicka podrska 
+• Mrezni ogranak: NOC (Network Operations Center) - 24/7 nadzor mreze, RF i 
+infrastrukturni inzenjeri 
+• IT i razvoj: DevOps tim, IT sigurnost, Sistem administracija 
+• Komercijalni sektor: Marketing, Tim za poslovne korisnike (B2B), Call centar i prodaja 
+• Finansije i administracija: Racunovodstvo i naplata, Kontroling troskova 
+ 
+1.3 Korisnicke uloge i pristup 
+ 
+Rola Opis Pristup modulu 
+admin Administrator sistema - puni pristup svim 
+modulima 
+Release + Problem 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+Rola Opis Pristup modulu 
+release_manager Koordinira proces uvodjenja novih 
+funkcionalnosti i tarifnih modela 
+Release Operations 
+change_manager Procjenjuje uticaj RFC-a i koordinira CAB 
+sjednice 
+Release Operations 
+devops Razvoj softvera, CI/CD pipeline, 
+deployment 
+Release Operations 
+cab_clan Clan tijela koje odobrava zahtjeve za 
+promjenama 
+Release Operations 
+qa_inzenjer Testiranje i verifikacija rjesenja pred 
+deployment 
+Release Operations 
+problem_manager Proaktivno upravljanje ponavljajucim 
+incidentima i RCA 
+Problem Management 
+noc_operater 24/7 nadzor mrezne infrastrukture, 
+detekcija problema 
+Problem Management 
+it_inzenjer Razvoj i implementacija tehnickih rjesenja Problem Management 
+operater Operativni zadaci - nema pristup ITSM 
+modulima 
+Nema pristupa 
+ 
+Svaki korisnik se prijavljuje putem email i lozinka kombinacije. Nakon prijave JWT token 
+sadrzi ulogu korisnika, a sistem automatski prikazuje odgovarajuce module. Korisnik s 
+ulogom 'operater' dobija poruku 'No Module Access'. 
+ 
+Tabela testnih korisnika 
+ 
+Korisnik Rola Modul 
+Amir Hastor release_manager Release Operations 
+Asmir Prasovic change_manager Release Operations 
+Nedim Dzindo devops Release Operations 
+Alma Pasic cab_clan Release Operations 
+Sara Kovac qa_inzenjer Release Operations 
+Berin Masovic problem_manager Problem Management 
+Tarik Begovic noc_operater Problem Management 
+Yahia Elhattab it_inzenjer Problem Management 
+Haris Imamovic operater Nema pristupa 
+Admin Sistema admin Release + Problem 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+2. ITIL Procesi 
+Tim 15 implementira dva centralna ITIL procesa: Release and Deployment Management i 
+Problem Management. Oba procesa su integrisana kroz zajednicku PostgreSQL bazu 
+podataka. 
+ 
+2.1 Release and Deployment Management 
+Release and Deployment Management je ITIL proces koji osigurava planiranje, testiranje i 
+kontrolisano uvodjenje novih tarifnih modela, softverskih zakrpa i funkcionalnih nadogradnji u 
+mreznu infrastrukturu i BSS/OSS platformu Telecom Operater d.d. - bez prekida aktivnih 
+usluga i uz minimalan rizik po postojece korisnike. 
+ 
+Kljucni elementi procesa 
+• Planiranje release-a (Release Planning) - identifikacija promjena, procjena uticaja, 
+izrada rasporeda 
+• Razvoj i testiranje - funkcionalno testiranje, UAT, regresijsko testiranje u staging 
+okruzenju (min. 5 radnih dana) 
+• Go/No-Go kriteriji - formalna odluka Release Managera prije aktivacije u 
+produkcijskom okruzenju 
+• Deployment plan - detaljni koraci rollout-a i rollback procedure 
+• Post-deployment monitoring - pracenje sistema minimalno 72 sata nakon 
+deploymenta 
+• PIR (Post Implementation Review) - analiza release-a 7 dana nakon deploymenta 
+ 
+Koraci procesa 
+ 
+Korak Aktivnost Odgovornost Ishod 
+1 Podnosenje RFC-a Komercijalni / IT tim RFC kreiran u sistemu 
+2 Procjena i kategorizacija Change Manager RFC kategorizovan 
+(standardna/normalna/hitna) 
+3 CAB sjednica i odobrenje CAB Odobrenje ili odbijanje RFC-a 
+4 Razvoj i staging testiranje IT / DevOps tim Prosao UAT (min. 5 radnih 
+dana) 
+5 Go/No-Go odluka Release Manager Formalna odluka za 
+deployment 
+6 Nocni deployment (02-05h) DevOps + NOC Release implementiran u 
+produkciju 
+7 72-satni post-deployment 
+monitoring 
+NOC tim Izvjestaj o performansama 
+8 PIR analiza (7 dana post-
+release) 
+Release Manager PIR dokument sacuvan u 
+sistemu 
+9 Zatvaranje release-a Change Manager Release zatvoren, KEDB 
+azuriran 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+ 
+KPI Metrike 
+ 
+KPI Indikator Ciljna vrijednost Mjerenje 
+Release uspjesnost (bez rollback-a) > 95% Po release-u 
+Deployment downtime (planirana okna) < 30 minuta Po release-u 
+Post-release incidenti (72h) < 2 Po release-u 
+UAT pokrivenost test case-ova > 90% Po release-u 
+PIR completion rate 100% Kvartalno 
+ 
+RACI Matrica 
+ 
+Aktivnost Release 
+Mgr 
+Change 
+Mgr DevOps NOC CAB IT Inz. 
+Podnosenje RFC-a I R C I I A 
+Procjena RFC-a C R C C C C 
+CAB odobrenje C C I I R/A I 
+Razvoj i testiranje I I R/A I I C 
+Go/No-Go odluka R/A C C C I C 
+Deployment C I R/A C I C 
+Post-deploy monitoring I I C R/A I C 
+PIR analiza R/A C C C C C 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+2.2 Problem Management 
+Problem Management je ITIL proces fokusiran na proaktivnu i reaktivnu identifikaciju 
+korijenskih uzroka (Root Cause) mreznih prekida i sistemskih kvarova. NOC operater ili 
+Problem Manager analizira trend incidenata i rucno kreira Problem Ticket kada prepozna 
+ponavljajuci obrazac - preporuceno pravilo je tri ili vise istih incidenata u toku sedmice. 
+ 
+Kljucni elementi procesa 
+• Problem Ticket - formalni zapis koji se kreira rucno na osnovu analize incidenata i 
+prepoznatog ponavljajuceg obrasca 
+• Root Cause Analysis (RCA) - tehnike: 5 Whys, Ishikawa dijagram, Fault Tree analiza 
+• Known Error - dokumentovani problem s poznatim workaroundom ili trajnim fixom 
+• KEDB (Known Error Database) - centralna baza znanja za sve identificirane 
+probleme i workaround-e 
+• Incident trend analiza - pregled broja incidenata po danu u poslednjih 30 dana radi 
+ranog otkrivanja problema 
+ 
+Koraci procesa 
+ 
+Korak Aktivnost Odgovornost Ishod 
+1 Analiza trenda i registracija 
+problema 
+NOC / Problem 
+Manager 
+Kreiran Problem Ticket na 
+osnovu analize 
+2 Klasifikacija i prioritizacija 
+(P1-P4) 
+Problem Manager Prioritizovan problem sa 
+SLA rokovima 
+3 Formiranje istraznog tima Problem Manager Dodjeljeni tim za istrazivanje 
+4 Root Cause Analysis (RCA) Tech Lead + mrezni 
+inzenjeri 
+RCA izvjestaj s utvrdjenim 
+uzrokom 
+5 Identifikacija workaround 
+rjesenja 
+Tehnicki tim Workaround dokumentovan 
+u KEDB-u 
+6 Implementacija trajnog 
+rjesenja 
+IT / Mrezni tim Permanent fix implementiran 
+7 Verifikacija i testiranje 
+rjesenja 
+QA tim + NOC Potvrda eliminacije problema 
+8 Zatvaranje problema Problem Manager Problem zatvoren, KEDB 
+azuriran 
+9 Proaktivni pregled trenda 
+incidenata 
+Problem Manager + 
+NOC 
+Trend grafikon, preventivne 
+mjere 
+ 
+KPI Metrike 
+ 
+KPI Indikator Ciljna vrijednost Mjerenje 
+Problem rjesenje rate (u roku SLA) > 90% Mjesecno 
+Broj ponavljenih incidenata (YoY) Smanjenje >= 40% Kvartalno 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+KPI Indikator Ciljna vrijednost Mjerenje 
+MTRS (Mean Time to Root Cause) P1/P2 < 48 sati Po problemu 
+KEDB pokrivenost poznatih gresaka > 85% Kvartalno 
+Proaktivno identificirani problemi > 30% od ukupnog broja Mjesecno 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+3. Arhitektura sistema 
+Informacioni sistem Telecom Operater d.d. implementiran je kao viseslojna modularna 
+arhitektura, sa jasnim razdvajanjem odgovornosti izmedju prezentacijskog, API i 
+podatkovnog sloja. 
+ 
+3.1 Tehnoloski stack 
+ 
+Sloj Tehnologija Namjena 
+Frontend React.js + React Router + Vite Korisnicko sucelje - dva odvojena 
+modula 
+Backend Node.js + Express.js REST API sloj sa odvojenim routerima 
+po procesu 
+Baza podataka PostgreSQL 15+ (Supabase) Transakcioni podaci, triggeri, SQL 
+agregacije 
+Autentikacija JWT (JSON Web Tokens) Stateless autentikacija sa role-based 
+pristupom 
+Hosting baze Supabase Cloud Managed PostgreSQL sa connection 
+poolingom 
+Version Control Git + GitHub Kolaboracija i verzionisanje koda 
+ 
+3.2 Arhitekturni slojevi 
+• Prezentacijski sloj: Web portal (React.js) sa dva odvojena modula - Release 
+Operations i Problem Management. Pristup modulima kontrolisan je na osnovu uloge 
+korisnika. 
+• REST API sloj: Express.js sa odvojenim routerima - /api/release/* za Release modul, 
+/api/problem/* za Problem modul i /api/shared/* za zajednicke resurse (korisnici, 
+usluge, incidenti). 
+• Kontroler sloj: Poslovna logika odvojena u release.controller.js i problem.controller.js 
+sa direktnim SQL upitima nad bazom. 
+• Podatkovni sloj: PostgreSQL sa 7 tabela, 3 database triggera i SQL agregacijama i 
+JOIN upitima za dashboard podatke. 
+ 
+3.3 Integracija Release i Problem modula 
+ 
+Komponenta Integracija Svrha 
+Problem modul -> 
+Release modul 
+FK veza: problems.id -> 
+changes.problem_id 
+RFC moze biti kreiran s 
+referencom na Problem Ticket 
+Changes -> Releases FK veza: changes.id -> 
+releases.change_id 
+Svaki odobreni RFC dobija 
+Release paket 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+Komponenta Integracija Svrha 
+KEDB -> Problems FK veza: problems.id -> 
+kedb.problem_id 
+Automatsko kreiranje KEDB 
+zapisa pri promjeni statusa u 
+rca_zavrsen 
+Shared endpointi /api/shared/users, /services, 
+/incidents 
+Dijeljeni podaci dostupni objema 
+modulima za lookup dropdown-
+ove 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+4. Baza podataka 
+Baza podataka je implementirana na Supabase cloud platformi koristeci PostgreSQL 15+. 
+Koristi se jedna baza podataka sa jasno definisanim entitetima koji pokrivaju oba ITIL 
+procesa. 
+ 
+4.1 Entiteti i tabele 
+ 
+Tabela Opis Kljucne kolone 
+users Korisnici ITSM sistema s 
+definisanim ulogama 
+id, ime, prezime, email, uloga, status 
+services Katalog telekomunikacijskih 
+usluga s SLA parametrima 
+id, naziv, tip, sla_uptime, 
+sla_response_time 
+incidents Evidencija mreznih incidenata id, korisnik_id, servis_id, prioritet, 
+status, kreiran_u 
+problems Problem Tiketi s RCA rezultatima id, incident_id, root_cause, 
+rca_metoda, prioritet, status 
+kedb Baza poznatih gresaka - 
+workaround i permanent fix 
+id, problem_id, workaround, trajni_fix, 
+status, azuriran_u 
+changes RFC zahtjevi za promjenom kroz 
+CAB proces 
+id, problem_id, naziv, tip, cab_odluka, 
+status 
+releases Release paketi koji 
+implementiraju odobrene RFC-
+ove 
+id, change_id, verzija, go_no_go, 
+pir_status, datum_deploymenta, 
+monitoring_kraj 
+ 
+4.2 Database triggeri 
+Baza podataka sadrzi tri triggera koji automatizuju ITIL-specificnu logiku direktno na razini 
+baze, neovisno od aplikacijskog koda. SQL skripte triggera nalaze se u fajlu 
+telecom_itsm_schema.sql u repozitoriju projekta. 
+ 
+Trigger Tabela Dogadjaj Akcija 
+trg_kedb_azuriran_u kedb BEFORE UPDATE Automatski postavlja 
+azuriran_u = NOW() pri 
+svakom UPDATE-u zapisa 
+trg_auto_kedb problems AFTER UPDATE Kreira KEDB zapis kada 
+problem predje u status 
+'rca_zavrsen'. Koristi ON 
+CONFLICT DO NOTHING 
+kako bi izbjegao duplikate. 
+trg_releases_monitoring releases BEFORE INSERT 
+OR UPDATE 
+Postavlja monitoring_kraj = 
+datum_deploymenta + 
+INTERVAL '72 hours' kada 
+je datum_deploymenta 
+postavljen, a 
+monitoring_kraj jos nije. 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+ 
+4.3 SQL agregacije i JOIN upiti za dashboard podatke 
+Dashboard podaci dohvataju se kroz SQL upite s agregacijama i JOIN vezama nad 
+tabelama. Primjeri kljucnih upita: 
+ 
+Naziv upita Opis Koristi se za 
+Aktivni problemi JOIN: problems + kedb + users + 
+incidents + services, filtrirano po 
+statusu koji nije 'rijesen' ili 'zatvoren' 
+Problem Manager dashboard 
+- dnevni pregled P1/P2 
+Release pipeline JOIN: releases + changes, filtrirano i 
+sortirano po datumu deploymenta 
+Pracenje statusa aktivnih 
+release-ova i PIR analize 
+Incident trend (30 
+dana) 
+COUNT agregacija incidenata 
+grupisana po datumu kreiranja 
+Proaktivno otkrivanje 
+ponavljajucih obrazaca 
+Metrike po prioritetu COUNT(*) uz FILTER uvjete za svaki 
+prioritet i status 
+Dashboard metric cards 
+(OPEN/CLOSED/P1-P4) 
+ 
+4.4 Indeksi 
+Indeksirane su sve FK kolone i najcesce filtrirane kolone, ukupno 25 indeksa pored 
+primarnih kljuceva: 
+ 
+Tabela Indeksirane kolone 
+users email, uloga, status 
+services vlasnik_id, status, tip 
+incidents korisnik_id, servis_id, dodijeljen_id, status, prioritet, kreiran_u 
+DESC 
+problems incident_id, dodijeljen_id, status, prioritet 
+kedb status 
+changes problem_id, kreirao_id, odobrio_id, status, tip 
+releases change_id, kreirao_id, okruzenje, go_no_go 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+5. Implementacija 
+Aplikacija je implementirana kao full-stack web aplikacija sa React frontendom i 
+Node.js/Express backendom, direktno povezana na PostgreSQL bazu na Supabase cloud 
+platformi. 
+ 
+5.1 Struktura projekta 
+• backend/src/routes/ - Express routeri odvojeni po modulima: release.routes.js, 
+problem.routes.js, shared.routes.js 
+• backend/src/controllers/ - Poslovna logika: release.controller.js, problem.controller.js 
+• backend/src/db/pool.js - PostgreSQL connection pool konfiguracija 
+• backend/.env - Konfiguracija okruzenja: DATABASE_URL, JWT_SECRET, 
+JWT_EXPIRES_IN 
+• frontend/src/modules/release/ - React komponente: ReleaseDashboard.jsx, 
+CABSession.jsx, PostDeployMonitor.jsx 
+• frontend/src/modules/problem/ - React komponente: ProblemDashboard.jsx, 
+RCAWorkspace.jsx, KEDBView.jsx 
+• frontend/src/api/client.js - HTTP klijent za komunikaciju sa backendom 
+ 
+5.2 Role-Based Access Control (RBAC) 
+Sistem implementira module-level RBAC na frontendu i action-level RBAC na backendu. 
+Svaki JWT token sadrzi ulogu korisnika. Frontend App.jsx mapira uloge na module, backend 
+middleware provjerava ulogu prije svake akcije. 
+ 
+5.3 API Endpointi 
+Release and Deployment Management 
+ 
+Method Endpoint Opis 
+GET /api/release/pipeline Release pipeline - JOIN upit nad releases i 
+changes tabelama 
+GET /api/release/rfc Lista svih RFC zahtjeva 
+GET /api/release/rfc/:id Detalji specificnog RFC-a 
+POST /api/release/rfc Kreiranje novog RFC-a (opciono s referencom 
+na problem_id) 
+PUT /api/release/rfc/:id/cab CAB odluka (odobreno / odbijeno / odgodeno) 
+PUT /api/release/:id/go-no-go Go/No-Go odluka Release Managera 
+PUT /api/release/:id/deploy Postavljanje datuma deploymenta 
+PUT /api/release/:id/pir PIR status update 
+PUT /api/release/:id/rollback Pokretanje rollback procedure 
+ 
+Problem Management 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+ 
+Method Endpoint Opis 
+GET /api/problem/active Aktivni problem tiketi - SQL JOIN upit nad 
+problems, kedb, users, incidents 
+GET /api/problem/trend Trend analiza incidenata - COUNT agregacija 
+po datumu (30 dana) 
+GET /api/problem/metrics Metrike dashboarda - brojaci 
+OPEN/CLOSED/P1/P2/P3/P4 
+GET /api/problem/:id Detalji specificnog Problem Ticketa 
+POST /api/problem Rucno kreiranje Problem Ticketa s odabranim 
+incidentom iz lookup dropdowna 
+PUT /api/problem/:id/rca Unos root cause i odabir RCA metode (5 Whys, 
+Ishikawa, Fault Tree) 
+PUT /api/problem/:id/status Promjena statusa problema kroz workflow (P1-
+P4) 
+PUT /api/problem/:id/incidents Azuriranje liste povezanih incidenata 
+GET /api/problem/kedb Pregled KEDB baze poznatih gresaka 
+POST /api/problem/kedb Rucno kreiranje novog KEDB zapisa 
+PUT /api/problem/kedb/:id Azuriranje workaround-a i trajnog fixa u KEDB-u 
+ 
+Dijeljeni endpointi (Shared) 
+ 
+Method Endpoint Opis 
+GET /api/shared/users Lista korisnika - koristi se za lookup dropdown u 
+formama 
+GET /api/shared/services Katalog usluga - koristi se za incident i problem 
+forme 
+GET /api/shared/incidents Lista incidenata - koristi se za Problem lookup 
+dropdown 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+6. Veza izmedju ITIL procesa 
+Release and Deployment Management i Problem Management su integrisani procesi koji 
+dijele zajednicku bazu podataka i medjusobno se dopunjuju: 
+ 
+• Problem Management identifikuje root cause mreznog prekida i moze inicirati 
+Change Request (RFC) s referencom na Problem Ticket, koji Release and 
+Deployment Management koordinira i implementira u produkcijsko okruzenje 
+• Svaki neuspjesni release koji uzrokuje incident postaje ulaz za Problem Management 
+istragu - oba procesa su direktno povezana kroz changes i problems tabele 
+• Oba procesa dijele zajednicki KEDB - Problem Manager dokumentuje workaround, a 
+trajni fix se implementira kroz novi release 
+• Problem Manager prisustvuje CAB sjednicama kada se razmatraju rjesenja za 
+poznate probleme 
+ 
+Ova sinergija osigurava da kompanija ne samo brzo reaguje na probleme, nego ih trajno 
+eliminira (Problem Management) i kontrolisano uvodi unapredjenja (Release and 
+Deployment Management). 
+ 
+7. Demo scenariji iz prakse 
+ 
+7.1 Release and Deployment Management 
+ 
+Scenarij Tok procesa 
+5G Premium Tarifni 
+Paket 
+RFC kreiran -> CAB odobrenje -> BSS izmjene -> UAT (7 dana) -> 
+nocni deployment -> 72h monitoring -> PIR 
+Softverski patch - 
+sigurnosna ranjivost 
+Hitna promjena -> CAB (emergency) -> deployment isti dan -> 72h 
+monitoring 
+Migracija billing sistema Standardna promjena -> 3 sedmice pripreme -> phased rollout po 
+regionima -> PIR 
+ 
+7.2 Problem Management 
+ 
+Scenarij Tok procesa 
+Periodicni pad LTE 
+signala - urbane zone 
+NOC analizira trend i kreira Problem Ticket (P2) -> RCA metodom 
+5 Whys -> utvrdjeni memory leak u firmware-u BTS-a -> 
+workaround (auto-restart) dokumentovan u KEDB-u -> trajni fix 
+(firmware update v4.2.3) kroz Release Management 
+Povremeni prekidi 
+naplate 
+Problem Manager kreira Problem Ticket na osnovu analize 
+incidenata -> Ishikawa analiza otkrila konflikt izmedju cache i baze 
+podataka -> privremeno rucno azuriranje (workaround) -> trajni 
+patch implementiran kroz Release Management -> problem 
+zatvoren 
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+ 
+  
+Telecom Operater d.d. | ITSM Informacioni Sistem Tim 15 | ETF Sarajevo, 2025. 
+Projektovanje informacionih sistema | Praktikum Tim 15, 2025. 
+8. Zakljucak 
+Implementirani ITSM informacioni sistem za Telecom Operater d.d. uspjesno pokriva oba 
+dodijeljena ITIL procesa: Release and Deployment Management i Problem Management. 
+Sistem je razvijen kao full-stack web aplikacija sa React frontendom, Node.js/Express 
+backendom i PostgreSQL bazom podataka na Supabase cloud platformi. 
+ 
+Kljucna postignuca projekta: 
+• Unapredjenje postojece ITSM osnove sa dva kompletna ITIL modula sa svim 
+kljucnim tokovima rada 
+• Role-based access control za sve kljucne korisnicke uloge definisane u sistemu 
+• Automatizacija ITIL-specificnih pravila kroz database triggere (72h monitoring, auto-
+KEDB kreiranje pri promjeni statusa problema) 
+• Intuitivno korisnicko sucelje sa metric dashboard-ovima, lookup dropdownima i KEDB 
+editor funkcionalnoscu 
+• Kompletna KEDB baza poznatih gresaka sa create/edit mogucnostima i incident 
+trend analizom za posljednjih 30 dana 
+• FK integracija izmedju procesa - RFC moze biti kreiran s referencom na Problem 
+Ticket 
+ 
+Sistem je funkcionalno kompletan i spreman za pilotsko okruzenje i akademsku 
+demonstraciju. U narednim iteracijama razvoja moze biti prosiren dodatnim ITIL procesima 
+(Incident Management, Change Management) te naprednim funkcijama kao sto su 
+automatske notifikacije i SLA pracenje u realnom vremenu. 

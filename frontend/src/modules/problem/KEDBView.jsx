@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '../../api/client';
+import { api, authStorage } from '../../api/client';
 
 export default function KEDBView() {
   const [items, setItems] = useState([]);
@@ -41,6 +41,29 @@ export default function KEDBView() {
       label: `#${problem.id} · ${problem.prioritet} · ${problem.status}`,
     }));
   }, [problems]);
+
+  const getRoleFromToken = () => {
+    try {
+      const token = localStorage.getItem('telecom_itsm_token');
+      if (!token) return { role: null, id: null };
+      const payload = token.split('.')[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = JSON.parse(atob(padded));
+      return { role: decoded?.uloga || decoded?.role || null, id: decoded?.id || decoded?.userId || null };
+    } catch (e) {
+      return { role: null, id: null };
+    }
+  };
+
+  const currentUser = getRoleFromToken();
+  const role = currentUser.role;
+  const canEditKedb = ['problem_manager', 'admin'].includes(role);
+  const isRestrictedViewer = currentUser.role === 'noc_operater' || currentUser.role === 'it_inzenjer';
+  const filteredProblemOptions = isRestrictedViewer ? problemOptions.filter((p) => {
+    const problem = problems.find((x) => String(x.id) === p.value);
+    return problem && Number(problem.dodijeljen_id) === Number(currentUser.id);
+  }) : problemOptions;
 
   const problemPriorityMap = useMemo(() => {
     const map = {};
@@ -119,7 +142,7 @@ export default function KEDBView() {
             Linked Problem
             <select value={form.problem_id} onChange={(event) => setForm((prev) => ({ ...prev, problem_id: event.target.value }))} required>
               <option value="">Select problem</option>
-              {problemOptions.map((problem) => (
+              {filteredProblemOptions.map((problem) => (
                 <option key={problem.value} value={problem.value}>{problem.label}</option>
               ))}
             </select>
@@ -137,8 +160,14 @@ export default function KEDBView() {
             <textarea value={form.trajni_fix} rows={3} onChange={(event) => setForm((prev) => ({ ...prev, trajni_fix: event.target.value }))} required />
           </label>
           <div className="action-row">
-            <button className="btn-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : selectedId ? 'Update KEDB Entry' : 'Create KEDB Entry'}</button>
-            {selectedId ? <button className="btn-secondary" type="button" onClick={resetForm}>Cancel Edit</button> : null}
+            {canEditKedb ? (
+              <>
+                <button className="btn-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : selectedId ? 'Update KEDB Entry' : 'Create KEDB Entry'}</button>
+                {selectedId ? <button className="btn-secondary" type="button" onClick={resetForm}>Cancel Edit</button> : null}
+              </>
+            ) : (
+              <p className="helper-line">You have read-only access to the Known Errors list.</p>
+            )}
           </div>
         </form>
       </section>
@@ -196,7 +225,7 @@ export default function KEDBView() {
                   <td><span className={`badge ${item.status === 'resolved' ? 'status-success' : item.status === 'known_error' ? 'status-warning' : 'status-open'}`}>{item.status}</span></td>
                   <td>{item.workaround || '-'}</td>
                   <td>{item.trajni_fix || '-'}</td>
-                  <td><button className="btn-secondary" type="button" onClick={() => selectItem(item)}>Edit</button></td>
+                  <td>{canEditKedb ? <button className="btn-secondary" type="button" onClick={() => selectItem(item)}>Edit</button> : null}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '../../api/client';
+import { api, authStorage } from '../../api/client';
 import RCAWorkspace from './RCAWorkspace';
 import KEDBView from './KEDBView';
 
@@ -92,6 +92,36 @@ export default function ProblemDashboard() {
   useEffect(() => {
     loadOverview();
   }, []);
+
+  // Determine user role/client id from token for UI-level hiding (defensive)
+  const getRoleFromToken = () => {
+    try {
+      const token = localStorage.getItem('telecom_itsm_token');
+      if (!token) return null;
+      const payload = token.split('.')[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = JSON.parse(atob(padded));
+      return { role: decoded?.uloga || decoded?.role || null, id: decoded?.id || decoded?.userId || null };
+    } catch (e) {
+      return { role: null, id: null };
+    }
+  };
+
+  const currentUser = getRoleFromToken();
+  const isRestrictedViewer = currentUser.role === 'noc_operater' || currentUser.role === 'it_inzenjer';
+
+  const role = currentUser.role;
+  const canViewOverview = ['admin', 'problem_manager', 'noc_operater', 'it_inzenjer'].includes(role);
+  const canViewNew = ['problem_manager', 'noc_operater', 'admin'].includes(role);
+  const canViewRca = ['problem_manager', 'it_inzenjer', 'admin'].includes(role);
+  const canViewKedb = ['admin', 'problem_manager', 'noc_operater', 'it_inzenjer'].includes(role);
+
+  useEffect(() => {
+    if (activeView === 'create' && !canViewNew) setActiveView('overview');
+    if (activeView === 'rca' && !canViewRca) setActiveView('overview');
+    if (activeView === 'kedb' && !canViewKedb) setActiveView('overview');
+  }, [activeView, canViewNew, canViewRca, canViewKedb]);
 
   useEffect(() => {
     let alive = true;
@@ -274,8 +304,58 @@ export default function ProblemDashboard() {
     });
   };
 
+  const calculatePhases = () => {
+    const phase1 = allProblems.filter((p) => ['novo', 'istrazivanje'].includes(p.status)).length;
+    const phase2 = allProblems.filter((p) => ['istrazivanje', 'rca_zavrsen'].includes(p.status)).length;
+    const phase3 = allProblems.filter((p) => ['workaround_aktivan', 'fix_u_toku', 'riješen', 'zatvoren'].includes(p.status)).length;
+    
+    return [
+      {
+        name: 'Problem Identification',
+        description: 'Discovery, categorization, and prioritization of problems',
+        count: phase1,
+        tone: 'accent',
+        bgClass: 'phase-identification',
+      },
+      {
+        name: 'Problem Control',
+        description: 'Investigation, diagnostics, and root cause analysis',
+        count: phase2,
+        tone: 'high',
+        bgClass: 'phase-control',
+      },
+      {
+        name: 'Error Control',
+        description: 'Workaround implementation, fix deployment, and closure',
+        count: phase3,
+        tone: 'success',
+        bgClass: 'phase-error-control',
+      },
+    ];
+  };
+
   return (
     <div className="stack single-column">
+      <section className="panel phases-panel">
+        <h3 className="section-title">ITIL Problem Management — Three Phases</h3>
+        <div className="phases-grid">
+          {calculatePhases().map((phase) => (
+            <article key={phase.name} className={`phase-card ${phase.bgClass}`}>
+              <div className="phase-header">
+                <h4 className="phase-name">{phase.name}</h4>
+                <span className={`phase-count metric-${phase.tone}`}>{phase.count}</span>
+              </div>
+              <p className="phase-description">{phase.description}</p>
+              <div className="phase-progress">
+                <div className="progress-bar-bg">
+                  <div className="progress-bar-fill" style={{width: `${phase.count > 0 ? Math.min((phase.count / Math.max(...calculatePhases().map(ph => ph.count), 1)) * 100, 100) : 0}%`}}></div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="panel process-panel">
         <h3 className="section-title">Problem Flow</h3>
         <div className="process-steps">
@@ -313,10 +393,18 @@ export default function ProblemDashboard() {
       </section>
 
       <section className="panel view-switch">
-        <button className={activeView === 'overview' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('overview')}>Overview</button>
-        <button className={activeView === 'create' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('create')}>New Problem</button>
-        <button className={activeView === 'rca' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('rca')}>RCA Workspace</button>
-        <button className={activeView === 'kedb' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('kedb')}>Known Errors</button>
+        {canViewOverview ? (
+          <button className={activeView === 'overview' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('overview')}>Overview</button>
+        ) : null}
+        {canViewNew ? (
+          <button className={activeView === 'create' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('create')}>New Problem</button>
+        ) : null}
+        {canViewRca ? (
+          <button className={activeView === 'rca' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('rca')}>RCA Workspace</button>
+        ) : null}
+        {canViewKedb ? (
+          <button className={activeView === 'kedb' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('kedb')}>Known Errors</button>
+        ) : null}
       </section>
 
       {activeView === 'create' ? (
@@ -440,7 +528,7 @@ export default function ProblemDashboard() {
                 <tbody>
                   {filteredProblems.map((item) => (
                     <tr key={item.id}>
-                      <td>{item.id}</td>
+                        <td>{item.id}</td>
                       <td><span className={`badge active-badge ${getStatusClass(item.status)}`}>{statusLabels[item.status] || item.status}</span></td>
                       <td><span className={`badge active-badge ${priorityClassMap[item.prioritet] || 'priority-p4'}`}>{priorityLabels[item.prioritet] || item.prioritet}</span></td>
                       <td>{rcaMethodLabels[item.rca_metoda] || item.rca_metoda || '-'}</td>

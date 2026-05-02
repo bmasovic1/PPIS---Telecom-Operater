@@ -16,7 +16,8 @@ router.post('/kedb', authorizeRoles('admin', 'problem_manager', 'it_inzenjer'), 
 router.get('/kedb/:id', authorizeRoles('admin', 'problem_manager', 'noc_operater', 'it_inzenjer'), asyncHandler(problemController.getKedbById));
 router.put('/kedb/:id', authorizeRoles('admin', 'problem_manager', 'it_inzenjer'), asyncHandler(problemController.updateKedb));
 router.get('/:id', authorizeRoles('admin', 'problem_manager', 'noc_operater', 'it_inzenjer'), asyncHandler(problemController.getProblemById));
-router.post('/', authorizeRoles('admin', 'problem_manager', 'it_inzenjer'), asyncHandler(problemController.createProblem));
+// Allow NOC operators to create problem records (they can report problems)
+router.post('/', authorizeRoles('admin', 'problem_manager', 'it_inzenjer', 'noc_operater'), asyncHandler(problemController.createProblem));
 router.put('/:id/rca', authorizeRoles('admin', 'problem_manager', 'it_inzenjer'), asyncHandler(problemController.updateProblemRca));
 router.put('/:id/status', authorizeRoles('admin', 'problem_manager', 'it_inzenjer'), asyncHandler(problemController.updateProblemStatus));
 router.put('/:id/incidents', authorizeRoles('admin', 'problem_manager', 'it_inzenjer'), asyncHandler(problemController.updateProblemIncidents));

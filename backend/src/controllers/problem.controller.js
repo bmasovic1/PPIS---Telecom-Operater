@@ -2,6 +2,21 @@ const pool = require('../db/pool');
 const { requireFields, isPositiveInt, ensureArrayOfPositiveInts } = require('../utils/validators');
 
 const getProblems = async (req, res) => {
+  const role = req.user?.uloga;
+  const userId = req.user?.id;
+
+  if (role === 'noc_operater' || role === 'it_inzenjer') {
+    const { rows } = await pool.query(
+      `SELECT p.*, u.ime, u.prezime
+       FROM problems p
+       LEFT JOIN users u ON u.id = p.dodijeljen_id
+       WHERE p.dodijeljen_id = $1
+       ORDER BY p.kreiran_u DESC`,
+      [userId]
+    );
+    return res.json(rows);
+  }
+
   const { rows } = await pool.query(
     `SELECT p.*, u.ime, u.prezime
      FROM problems p
@@ -13,6 +28,21 @@ const getProblems = async (req, res) => {
 };
 
 const getActiveProblems = async (req, res) => {
+  const role = req.user?.uloga;
+  const userId = req.user?.id;
+
+  if (role === 'noc_operater' || role === 'it_inzenjer') {
+    const { rows } = await pool.query(
+      `SELECT p.*, u.ime, u.prezime
+       FROM problems p
+       LEFT JOIN users u ON u.id = p.dodijeljen_id
+       WHERE p.status NOT IN ('riješen', 'zatvoren') AND p.dodijeljen_id = $1
+       ORDER BY p.kreiran_u DESC`,
+      [userId]
+    );
+    return res.json(rows);
+  }
+
   const { rows } = await pool.query(
     `SELECT p.*, u.ime, u.prezime
      FROM problems p
@@ -79,9 +109,17 @@ const getProblemById = async (req, res) => {
      ORDER BY pi.linked_at DESC`,
     [id]
   );
+  // Row-level access: restricted roles may only view problems assigned to them
+  const role = req.user?.uloga;
+  const userId = req.user?.id;
+  const problem = problemResult.rows[0];
+
+  if ((role === 'noc_operater' || role === 'it_inzenjer') && Number(problem.dodijeljen_id) !== Number(userId)) {
+    return res.status(403).json({ error: 'Nemate dozvolu za pregled ovog problema.' });
+  }
 
   res.json({
-    ...problemResult.rows[0],
+    ...problem,
     incidents: incidentsResult.rows,
   });
 };
