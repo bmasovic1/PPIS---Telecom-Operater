@@ -1,6 +1,43 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api/client';
 
+const translations = {
+  bs: {
+    title: 'Kreiraj zahtjev za promjenu',
+    requester: 'Podnosilac zahtjeva',
+    requesterLoading: 'Učitavanje korisnika...',
+    requesterSelect: 'Odaberi podnosioca',
+    requestTitle: 'Naziv zahtjeva',
+    changeType: 'Tip promjene',
+    normal: 'Normalna',
+    standard: 'Standardna',
+    emergency: 'Hitna',
+    releaseVersion: 'Verzija release-a (opcionalno)',
+    rollbackPlan: 'Plan rollback-a',
+    impact: 'Procjena utjecaja',
+    saving: 'Spremanje...',
+    submit: 'Pošalji promjenu',
+    success: 'RFC je uspješno kreiran.',
+  },
+  en: {
+    title: 'Create Change Request',
+    requester: 'Requester',
+    requesterLoading: 'Loading users...',
+    requesterSelect: 'Select requester',
+    requestTitle: 'Request Title',
+    changeType: 'Change Type',
+    normal: 'Normal',
+    standard: 'Standard',
+    emergency: 'Emergency',
+    releaseVersion: 'Release Version (Optional)',
+    rollbackPlan: 'Rollback Plan',
+    impact: 'Impact Assessment',
+    saving: 'Saving...',
+    submit: 'Submit Change',
+    success: 'RFC successfully created.',
+  },
+};
+
 const initialState = {
   kreirao_id: '',
   naziv: '',
@@ -10,7 +47,8 @@ const initialState = {
   release_verzija: '',
 };
 
-export default function RFCForm({ onCreated }) {
+export default function RFCForm({ onCreated, language = 'en' }) {
+  const t = translations[language] || translations.en;
   const [form, setForm] = useState(initialState);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -75,7 +113,7 @@ export default function RFCForm({ onCreated }) {
 
       await api.createRfc(payload);
       setForm(initialState);
-      setMessage('RFC uspjesno kreiran.');
+      setMessage(t.success);
       onCreated();
     } catch (error) {
       setMessage(error.message);
@@ -86,43 +124,43 @@ export default function RFCForm({ onCreated }) {
 
   return (
     <section className="panel">
-      <h3 className="section-title">Create Change Request</h3>
+      <h3 className="section-title">{t.title}</h3>
       <form className="form-grid" onSubmit={onSubmit}>
         <label>
-          Requester
+          {t.requester}
           <select name="kreirao_id" value={form.kreirao_id} onChange={onChange} required disabled={usersLoading}>
-            <option value="">{usersLoading ? 'Loading users...' : 'Select requester'}</option>
+            <option value="">{usersLoading ? t.requesterLoading : t.requesterSelect}</option>
             {requesterOptions.map((user) => (
               <option key={user.value} value={user.value}>{user.label}</option>
             ))}
           </select>
         </label>
         <label>
-          Request Title
+          {t.requestTitle}
           <input name="naziv" value={form.naziv} onChange={onChange} required />
         </label>
         <label>
-          Change Type
+          {t.changeType}
           <select name="tip" value={form.tip} onChange={onChange}>
-            <option value="normalna">Normal</option>
-            <option value="standardna">Standard</option>
-            <option value="hitna">Emergency</option>
+            <option value="normalna">{t.normal}</option>
+            <option value="standardna">{t.standard}</option>
+            <option value="hitna">{t.emergency}</option>
           </select>
         </label>
         <label>
-          Release Version (Optional)
+          {t.releaseVersion}
           <input name="release_verzija" value={form.release_verzija} onChange={onChange} />
         </label>
         <label>
-          Rollback Plan
+          {t.rollbackPlan}
           <textarea name="plan_rollbacka" value={form.plan_rollbacka} onChange={onChange} rows={3} />
         </label>
         <label>
-          Impact Assessment
+          {t.impact}
           <textarea name="procjena_utjecaja" value={form.procjena_utjecaja} onChange={onChange} rows={3} />
         </label>
         <button className="btn-primary form-action" type="submit" disabled={saving}>
-          {saving ? 'Saving...' : 'Submit Change'}
+          {saving ? t.saving : t.submit}
         </button>
       </form>
       {message ? <p className="status-line">{message}</p> : null}

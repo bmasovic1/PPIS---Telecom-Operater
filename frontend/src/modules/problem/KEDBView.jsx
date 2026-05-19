@@ -1,7 +1,61 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, authStorage } from '../../api/client';
 
-export default function KEDBView() {
+const translations = {
+  bs: {
+    title: 'Uređivač KEDB-a',
+    linkedProblem: 'Povezani problem',
+    selectProblem: 'Odaberi problem',
+    status: 'Status KEDB-a',
+    workaround: 'Zaobilazno rješenje',
+    permanentFix: 'Trajni fix',
+    saving: 'Spremanje...',
+    update: 'Ažuriraj KEDB unos',
+    create: 'Kreiraj KEDB unos',
+    cancel: 'Otkaži uređivanje',
+    readonly: 'Imate samo pravo čitanja nad listom poznatih grešaka.',
+    register: 'Registar poznatih grešaka',
+    loading: 'Učitavanje KEDB-a...',
+    allStatuses: 'Svi statusi',
+    active: 'Aktivno',
+    knownError: 'Poznata greška',
+    resolved: 'Riješeno',
+    sort: 'Sortiranje',
+    latest: 'Najnovije prvo',
+    oldest: 'Najstarije prvo',
+    problem: 'Problem',
+    priority: 'Prioritet',
+    action: 'Akcija',
+  },
+  en: {
+    title: 'KEDB Editor',
+    linkedProblem: 'Linked Problem',
+    selectProblem: 'Select problem',
+    status: 'KEDB Status',
+    workaround: 'Workaround',
+    permanentFix: 'Permanent Fix',
+    saving: 'Saving...',
+    update: 'Update KEDB Entry',
+    create: 'Create KEDB Entry',
+    cancel: 'Cancel Edit',
+    readonly: 'You have read-only access to the Known Errors list.',
+    register: 'Known Error Register',
+    loading: 'Loading KEDB...',
+    allStatuses: 'All statuses',
+    active: 'Active',
+    knownError: 'Known Error',
+    resolved: 'Resolved',
+    sort: 'Sort',
+    latest: 'Latest first',
+    oldest: 'Oldest first',
+    problem: 'Problem',
+    priority: 'Priority',
+    action: 'Action',
+  },
+};
+
+export default function KEDBView({ language = 'en' }) {
+  const t = translations[language] || translations.en;
   const [items, setItems] = useState([]);
   const [error, setError] = useState('');
   const [problems, setProblems] = useState([]);
@@ -38,7 +92,9 @@ export default function KEDBView() {
   const problemOptions = useMemo(() => {
     return problems.map((problem) => ({
       value: String(problem.id),
-      label: `#${problem.id} · ${problem.prioritet} · ${problem.status}`,
+      label: problem.root_cause && problem.root_cause.trim()
+        ? problem.root_cause
+        : `Problem #${problem.id} · P${problem.prioritet}`,
     }));
   }, [problems]);
 
@@ -96,7 +152,7 @@ export default function KEDBView() {
     setSelectedId('');
     setForm({
       problem_id: '',
-      status: '',
+      status: 'workaround_aktivan',
       workaround: '',
       trajni_fix: '',
     });
@@ -136,61 +192,65 @@ export default function KEDBView() {
   return (
     <section className="stack">
       <section className="panel">
-        <h3 className="section-title">KEDB Editor</h3>
+        <h3 className="section-title">{t.title}</h3>
         <form className="form-grid compact" onSubmit={submit}>
           <label>
-            Linked Problem
+            {t.linkedProblem}
             <select value={form.problem_id} onChange={(event) => setForm((prev) => ({ ...prev, problem_id: event.target.value }))} required>
-              <option value="">Select problem</option>
+              <option value="">{t.selectProblem}</option>
               {filteredProblemOptions.map((problem) => (
                 <option key={problem.value} value={problem.value}>{problem.label}</option>
               ))}
             </select>
           </label>
           <label>
-            KEDB Status
-            <input value={form.status} onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))} placeholder="active" required />
+            {t.status}
+            <select value={form.status} onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))} required>
+              <option value="workaround_aktivan">workaround_aktivan</option>
+              <option value="fix_u_razvoju">fix_u_razvoju</option>
+              <option value="fix_implementiran">fix_implementiran</option>
+            </select>
           </label>
           <label>
-            Workaround
+            {t.workaround}
             <textarea value={form.workaround} rows={3} onChange={(event) => setForm((prev) => ({ ...prev, workaround: event.target.value }))} required />
           </label>
           <label>
-            Permanent Fix
+            {t.permanentFix}
             <textarea value={form.trajni_fix} rows={3} onChange={(event) => setForm((prev) => ({ ...prev, trajni_fix: event.target.value }))} required />
           </label>
           <div className="action-row">
             {canEditKedb ? (
               <>
-                <button className="btn-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : selectedId ? 'Update KEDB Entry' : 'Create KEDB Entry'}</button>
-                {selectedId ? <button className="btn-secondary" type="button" onClick={resetForm}>Cancel Edit</button> : null}
+                <button className="btn-primary" type="submit" disabled={saving}>{saving ? t.saving : selectedId ? t.update : t.create}</button>
+                {selectedId ? <button className="btn-secondary" type="button" onClick={resetForm}>{t.cancel}</button> : null}
               </>
             ) : (
-              <p className="helper-line">You have read-only access to the Known Errors list.</p>
+              <p className="helper-line">{t.readonly}</p>
             )}
           </div>
         </form>
       </section>
 
       <section className="panel table-panel">
-        <h3 className="section-title">Known Error Register</h3>
-        {loading ? <p>Loading KEDB...</p> : null}
+        <h3 className="section-title">{t.register}</h3>
+        {loading ? <p>{t.loading}</p> : null}
         {error ? <p className="error-line">{error}</p> : null}
         <div className="table-toolbar compact">
           <div className="toolbar-group">
-            <span className="toolbar-label">Status</span>
+            <span className="toolbar-label">{t.status}</span>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="known_error">Known Error</option>
-              <option value="resolved">Resolved</option>
+              <option value="all">{t.allStatuses}</option>
+              <option value="active">{t.active}</option>
+              <option value="known_error">{t.knownError}</option>
+              <option value="resolved">{t.resolved}</option>
             </select>
           </div>
           <div className="toolbar-group">
-            <span className="toolbar-label">Sort</span>
+            <span className="toolbar-label">{t.sort}</span>
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-              <option value="latest">Latest first</option>
-              <option value="oldest">Oldest first</option>
+              <option value="latest">{t.latest}</option>
+              <option value="oldest">{t.oldest}</option>
             </select>
           </div>
         </div>
@@ -208,12 +268,12 @@ export default function KEDBView() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Problem</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Workaround</th>
-                <th>Permanent Fix</th>
-                <th>Action</th>
+                <th>{t.problem}</th>
+                <th>{t.priority}</th>
+                <th>{t.status}</th>
+                <th>{t.workaround}</th>
+                <th>{t.permanentFix}</th>
+                <th>{t.action}</th>
               </tr>
             </thead>
             <tbody>

@@ -9,6 +9,7 @@ router.use(authenticateToken);
 
 router.get('/pipeline', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getPipeline));
 router.get('/rfc', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getRfcs));
+router.get('/rfc/pending', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getPendingRfcs));
 router.get('/rfc/:id', authorizeRoles('admin', 'release_manager', 'change_manager', 'devops', 'cab_clan', 'qa_inzenjer'), asyncHandler(releaseController.getRfcById));
 router.post('/rfc', authorizeRoles('admin', 'release_manager', 'change_manager'), asyncHandler(releaseController.createRfc));
 router.put('/rfc/:id/cab', authorizeRoles('admin', 'change_manager', 'cab_clan'), asyncHandler(releaseController.updateCabDecision));

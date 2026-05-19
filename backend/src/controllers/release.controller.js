@@ -15,6 +15,7 @@ const getPipeline = async (req, res) => {
        r."okruženje" AS okruzenje,
        r.go_no_go,
        r.datum_deploymenta,
+       r.monitoring_kraj,
        r.pir_status,
        r.rollback_izvršen AS rollback_izvrsen,
        r.kreiran_u
@@ -30,6 +31,17 @@ const getRfcs = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT *
      FROM changes
+     ORDER BY kreiran_u DESC`
+  );
+
+  res.json(rows);
+};
+
+const getPendingRfcs = async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT *
+     FROM changes
+     WHERE cab_odluka = 'na_cekanju'
      ORDER BY kreiran_u DESC`
   );
 
@@ -324,6 +336,7 @@ const updateRollback = async (req, res) => {
 module.exports = {
   getPipeline,
   getRfcs,
+  getPendingRfcs,
   getRfcById,
   createRfc,
   updateCabDecision,

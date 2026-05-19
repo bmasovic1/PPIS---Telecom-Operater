@@ -40,6 +40,7 @@ export const api = {
   getIncidents: (limit = 100) => request(`/shared/incidents?limit=${limit}`),
   getReleasePipeline: () => request('/release/pipeline'),
   getRfcs: () => request('/release/rfc'),
+  getPendingRfcs: () => request('/release/rfc/pending'),
   createRfc: (body) => request('/release/rfc', { method: 'POST', body: JSON.stringify(body) }),
   updateCabDecision: (id, body) => request(`/release/rfc/${id}/cab`, { method: 'PUT', body: JSON.stringify(body) }),
   updateGoNoGo: (id, body) => request(`/release/${id}/go-no-go`, { method: 'PUT', body: JSON.stringify(body) }),

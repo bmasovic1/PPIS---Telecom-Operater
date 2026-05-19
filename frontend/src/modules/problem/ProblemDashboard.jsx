@@ -7,6 +7,7 @@ const initialForm = {
   incident_ids: [],
   dodijeljen_id: '',
   prioritet: 'P3',
+  naziv: '',
 };
 
 const priorityLabels = {
@@ -27,10 +28,10 @@ const statusLabels = {
 };
 
 const rcaMethodLabels = {
-  '5_whys': '5 Whys',
-  ishikawa: 'Ishikawa',
-  fault_tree: 'Fault Tree',
-  kepner_tregoe: 'Kepner-Tregoe',
+  '5_whys': 'Analiza mrežnih logova',
+  ishikawa: 'Analiza konfiguracije',
+  fault_tree: 'Analiza pokrivenosti i signala',
+  kepner_tregoe: 'Analiza performansi mreže',
 };
 
 const closedStatuses = new Set(['riješen', 'zatvoren']);
@@ -55,7 +56,7 @@ const getStatusClass = (status) => {
   return 'status-open';
 };
 
-export default function ProblemDashboard() {
+export default function ProblemDashboard({ language = 'en' }) {
   const [activeProblems, setActiveProblems] = useState([]);
   const [trend, setTrend] = useState([]);
   const [message, setMessage] = useState('');
@@ -198,13 +199,21 @@ export default function ProblemDashboard() {
     return incidentOptions.filter((item) => item.label.toLowerCase().includes(query));
   }, [incidentOptions, incidentSearch]);
 
-  const problemSteps = [
-    'Capture repeated incidents and assign ownership',
-    'Investigate root cause with RCA workspace',
-    'Create or update KEDB knowledge entry',
-    'Track workaround and permanent fix',
-    'Close only after verification and recovery',
-  ];
+  const problemSteps = language === 'bs'
+    ? [
+        'Zabilježi ponavljajuće incidente i dodijeli vlasništvo',
+        'Istraži uzrok uz RCA radni prostor',
+        'Kreiraj ili ažuriraj KEDB unos',
+        'Prati workaround i trajni fix',
+        'Zatvori tek nakon verifikacije i oporavka',
+      ]
+    : [
+        'Capture repeated incidents and assign ownership',
+        'Investigate root cause with RCA workspace',
+        'Create or update KEDB knowledge entry',
+        'Track workaround and permanent fix',
+        'Close only after verification and recovery',
+      ];
 
   const metrics = useMemo(() => {
     const counts = { P1: 0, P2: 0, P3: 0, P4: 0 };
@@ -219,8 +228,8 @@ export default function ProblemDashboard() {
     const closedCount = allProblems.length - openCount;
 
     return [
-      { label: 'Open', value: openCount, tone: 'accent' },
-      { label: 'Closed', value: closedCount, tone: 'muted' },
+      { label: language === 'bs' ? 'Otvoreno' : 'Open', value: openCount, tone: 'accent' },
+      { label: language === 'bs' ? 'Zatvoreno' : 'Closed', value: closedCount, tone: 'muted' },
       { label: 'P1', value: counts.P1, tone: 'critical' },
       { label: 'P2', value: counts.P2, tone: 'high' },
       { label: 'P3', value: counts.P3, tone: 'medium' },
@@ -273,6 +282,11 @@ export default function ProblemDashboard() {
         return;
       }
 
+      if (!form.naziv || !form.naziv.trim()) {
+        setMessage('Problem Title is required.');
+        return;
+      }
+
       if (uniqueIncidents.length !== form.incident_ids.length) {
         setForm((prev) => ({ ...prev, incident_ids: uniqueIncidents }));
       }
@@ -281,6 +295,7 @@ export default function ProblemDashboard() {
         incident_ids: uniqueIncidents.map((item) => Number(item)),
         dodijeljen_id: form.dodijeljen_id ? Number(form.dodijeljen_id) : undefined,
         prioritet: form.prioritet,
+        naziv: form.naziv,
       });
 
       setForm(initialForm);
@@ -337,7 +352,7 @@ export default function ProblemDashboard() {
   return (
     <div className="stack single-column">
       <section className="panel phases-panel">
-        <h3 className="section-title">ITIL Problem Management — Three Phases</h3>
+        <h3 className="section-title">{language === 'bs' ? 'ITIL upravljanje problemima - tri faze' : 'ITIL Problem Management — Three Phases'}</h3>
         <div className="phases-grid">
           {calculatePhases().map((phase) => (
             <article key={phase.name} className={`phase-card ${phase.bgClass}`}>
@@ -357,7 +372,7 @@ export default function ProblemDashboard() {
       </section>
 
       <section className="panel process-panel">
-        <h3 className="section-title">Problem Flow</h3>
+        <h3 className="section-title">{language === 'bs' ? 'Tok problema' : 'Problem Flow'}</h3>
         <div className="process-steps">
           {problemSteps.map((step, index) => (
             <div className="process-step" key={step}>
@@ -367,18 +382,18 @@ export default function ProblemDashboard() {
           ))}
         </div>
         <div className="status-legend">
-          <span className="legend-item"><span className="legend-swatch priority-p1" />P1 Critical</span>
-          <span className="legend-item"><span className="legend-swatch priority-p2" />P2 High</span>
-          <span className="legend-item"><span className="legend-swatch priority-p3" />P3 Medium</span>
-          <span className="legend-item"><span className="legend-swatch priority-p4" />P4 Low</span>
+          <span className="legend-item"><span className="legend-swatch priority-p1" />P1 {language === 'bs' ? 'Kritičan' : 'Critical'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p2" />P2 {language === 'bs' ? 'Visok' : 'High'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p3" />P3 {language === 'bs' ? 'Srednji' : 'Medium'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p4" />P4 {language === 'bs' ? 'Nizak' : 'Low'}</span>
         </div>
       </section>
 
       <section className="problem-metrics">
         {(metricsApi
-          ? [
-              { label: 'Open', value: metricsApi.open, tone: 'accent' },
-              { label: 'Closed', value: metricsApi.closed, tone: 'muted' },
+            ? [
+              { label: language === 'bs' ? 'Otvoreno' : 'Open', value: metricsApi.open, tone: 'accent' },
+              { label: language === 'bs' ? 'Zatvoreno' : 'Closed', value: metricsApi.closed, tone: 'muted' },
               { label: 'P1', value: metricsApi.p1, tone: 'critical' },
               { label: 'P2', value: metricsApi.p2, tone: 'high' },
               { label: 'P3', value: metricsApi.p3, tone: 'medium' },
@@ -394,27 +409,27 @@ export default function ProblemDashboard() {
 
       <section className="panel view-switch">
         {canViewOverview ? (
-          <button className={activeView === 'overview' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('overview')}>Overview</button>
+          <button className={activeView === 'overview' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('overview')}>{language === 'bs' ? 'Pregled' : 'Overview'}</button>
         ) : null}
         {canViewNew ? (
-          <button className={activeView === 'create' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('create')}>New Problem</button>
+          <button className={activeView === 'create' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('create')}>{language === 'bs' ? 'Novi problem' : 'New Problem'}</button>
         ) : null}
         {canViewRca ? (
-          <button className={activeView === 'rca' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('rca')}>RCA Workspace</button>
+          <button className={activeView === 'rca' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('rca')}>{language === 'bs' ? 'RCA radni prostor' : 'RCA Workspace'}</button>
         ) : null}
         {canViewKedb ? (
-          <button className={activeView === 'kedb' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('kedb')}>Known Errors</button>
+          <button className={activeView === 'kedb' ? 'chip-btn active' : 'chip-btn'} onClick={() => setActiveView('kedb')}>{language === 'bs' ? 'Poznate greške' : 'Known Errors'}</button>
         ) : null}
       </section>
 
       {activeView === 'create' ? (
         <section className="panel">
-          <h3 className="section-title">Create Problem Record</h3>
+          <h3 className="section-title">{language === 'bs' ? 'Kreiraj zapis problema' : 'Create Problem Record'}</h3>
           <form className="form-grid" onSubmit={submitProblem}>
             <label>
-              Incident Lookup
+              {language === 'bs' ? 'Pretraga incidenata' : 'Incident Lookup'}
               <input
-                placeholder="Search incidents..."
+                placeholder={language === 'bs' ? 'Pretraži incidente...' : 'Search incidents...'}
                 value={incidentSearch}
                 onChange={(event) => setIncidentSearch(event.target.value)}
                 disabled={lookupsLoading}
@@ -436,24 +451,33 @@ export default function ProblemDashboard() {
                 })}
               </div>
               <span className="helper-line">
-                {lookupsLoading ? 'Loading incidents...' : `${form.incident_ids.length} incident(s) selected`}
+                {lookupsLoading ? (language === 'bs' ? 'Učitavanje incidenata...' : 'Loading incidents...') : `${form.incident_ids.length} ${language === 'bs' ? 'incident(a) odabrano' : 'incident(s) selected'}`}
               </span>
             </label>
             <label>
-              Assigned User
+              {language === 'bs' ? 'Naziv problema' : 'Problem Title'}
+              <input
+                placeholder={language === 'bs' ? 'Obavezno: kratak opisni naziv' : 'Required: short descriptive title'}
+                value={form.naziv}
+                onChange={(e) => setForm((prev) => ({ ...prev, naziv: e.target.value }))}
+                required
+              />
+            </label>
+            <label>
+              {language === 'bs' ? 'Dodijeljeni korisnik' : 'Assigned User'}
               <select
                 value={form.dodijeljen_id}
                 onChange={(event) => setForm((prev) => ({ ...prev, dodijeljen_id: event.target.value }))}
                 disabled={usersLoading}
               >
-                <option value="">{usersLoading ? 'Loading users...' : 'Optional: select assignee'}</option>
+                <option value="">{usersLoading ? (language === 'bs' ? 'Učitavanje korisnika...' : 'Loading users...') : (language === 'bs' ? 'Opcionalno: odaberi izvršioca' : 'Optional: select assignee')}</option>
                 {assignedUserOptions.map((user) => (
                   <option key={user.value} value={user.value}>{user.label}</option>
                 ))}
               </select>
             </label>
             <label>
-              Priority
+              {language === 'bs' ? 'Prioritet' : 'Priority'}
               <select
                 value={form.prioritet}
                 onChange={(event) => setForm((prev) => ({ ...prev, prioritet: event.target.value }))}
@@ -464,23 +488,23 @@ export default function ProblemDashboard() {
                 <option value="P4">{priorityLabels.P4}</option>
               </select>
             </label>
-            <button className="btn-primary form-action" type="submit">Create Problem</button>
+            <button className="btn-primary form-action" type="submit">{language === 'bs' ? 'Kreiraj problem' : 'Create Problem'}</button>
           </form>
           {message ? <p className="status-line">{message}</p> : null}
         </section>
       ) : null}
 
-      {activeView === 'rca' ? <RCAWorkspace onUpdated={loadOverview} /> : null}
+      {activeView === 'rca' ? <RCAWorkspace language={language} onUpdated={loadOverview} /> : null}
 
       {activeView === 'overview' ? (
         <div className="split-panels">
           <section className="panel table-panel">
-            <h3 className="section-title">Active Problems</h3>
+            <h3 className="section-title">{language === 'bs' ? 'Aktivni problemi' : 'Active Problems'}</h3>
             <div className="table-toolbar">
               <div className="toolbar-group">
-                <span className="toolbar-label">Priority</span>
+                <span className="toolbar-label">{language === 'bs' ? 'Prioritet' : 'Priority'}</span>
                 <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
-                  <option value="all">All priorities</option>
+                  <option value="all">{language === 'bs' ? 'Svi prioriteti' : 'All priorities'}</option>
                   <option value="P1">P1</option>
                   <option value="P2">P2</option>
                   <option value="P3">P3</option>
@@ -488,20 +512,20 @@ export default function ProblemDashboard() {
                 </select>
               </div>
               <div className="toolbar-group">
-                <span className="toolbar-label">Status</span>
+                <span className="toolbar-label">{language === 'bs' ? 'Status' : 'Status'}</span>
                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="all">All statuses</option>
-                  <option value="open">Open</option>
-                  <option value="closed">Closed</option>
-                  <option value="novo">New</option>
-                  <option value="istrazivanje">Investigating</option>
-                  <option value="fix_u_toku">Fix In Progress</option>
+                  <option value="all">{language === 'bs' ? 'Svi statusi' : 'All statuses'}</option>
+                  <option value="open">{language === 'bs' ? 'Otvoreno' : 'Open'}</option>
+                  <option value="closed">{language === 'bs' ? 'Zatvoreno' : 'Closed'}</option>
+                  <option value="novo">{language === 'bs' ? 'Novo' : 'New'}</option>
+                  <option value="istrazivanje">{language === 'bs' ? 'Istraživanje' : 'Investigating'}</option>
+                  <option value="fix_u_toku">{language === 'bs' ? 'Fix u toku' : 'Fix In Progress'}</option>
                 </select>
               </div>
               <div className="toolbar-group">
-                <span className="toolbar-label">Sort</span>
+                <span className="toolbar-label">{language === 'bs' ? 'Sortiranje' : 'Sort'}</span>
                 <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-                  <option value="created_desc">Newest first</option>
+                  <option value="created_desc">{language === 'bs' ? 'Najnoviji prvo' : 'Newest first'}</option>
                   <option value="created_asc">Oldest first</option>
                   <option value="priority">By priority (P1-P4)</option>
                 </select>
@@ -513,6 +537,7 @@ export default function ProblemDashboard() {
                   <col className="col-id" />
                   <col className="col-status" />
                   <col className="col-priority" />
+                  <col className="col-assigned" />
                   <col className="col-rca" />
                   <col className="col-created" />
                 </colgroup>
@@ -521,6 +546,7 @@ export default function ProblemDashboard() {
                     <th>ID</th>
                     <th>Status</th>
                     <th>Priority</th>
+                    <th>Assigned</th>
                     <th>RCA Method</th>
                     <th>Created</th>
                   </tr>
@@ -531,13 +557,14 @@ export default function ProblemDashboard() {
                         <td>{item.id}</td>
                       <td><span className={`badge active-badge ${getStatusClass(item.status)}`}>{statusLabels[item.status] || item.status}</span></td>
                       <td><span className={`badge active-badge ${priorityClassMap[item.prioritet] || 'priority-p4'}`}>{priorityLabels[item.prioritet] || item.prioritet}</span></td>
+                      <td className="assigned-cell">{item.ime || item.dodijeljen_id ? `${item.ime || ''} ${item.prezime || ''}`.trim() : '-'}</td>
                       <td>{rcaMethodLabels[item.rca_metoda] || item.rca_metoda || '-'}</td>
                       <td>{new Date(item.kreiran_u).toLocaleString()}</td>
                     </tr>
                   ))}
                   {!filteredProblems.length ? (
                     <tr>
-                      <td colSpan={5}>No problems match the selected filters.</td>
+                      <td colSpan={6}>No problems match the selected filters.</td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -558,8 +585,8 @@ export default function ProblemDashboard() {
                 </div>
               ))}
             </div>
-            <div className="table-wrap">
-              <table>
+            <div className="table-wrap trend-table-wrap">
+              <table className="trend-table">
                 <thead>
                   <tr>
                     <th>Day</th>
