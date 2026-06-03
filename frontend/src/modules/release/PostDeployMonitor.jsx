@@ -36,6 +36,8 @@ const translations = {
     deployUpdated: 'Datum deployment-a i kraj monitoringa ažurirani.',
     pirUpdated: 'PIR status ažuriran.',
     rollbackUpdated: 'Rollback status ažuriran.',
+    downtimeHint: 'Za bez zastoja: Go / No-Go postavite na "Go", rollback ostavite na "Ne" i ostavite monitoring kraj prazan ako nije bilo prekida.',
+    downtimePreview: 'Procijenjeni ispad',
   },
   en: {
     title: 'Deployment Review',
@@ -71,6 +73,8 @@ const translations = {
     deployUpdated: 'Deployment date and monitoring end updated.',
     pirUpdated: 'PIR status updated.',
     rollbackUpdated: 'Rollback status updated.',
+    downtimeHint: 'For zero downtime: set Go / No-Go to "Go", keep rollback on "No", and leave monitoring end empty if there was no interruption.',
+    downtimePreview: 'Estimated downtime',
   },
 };
 
@@ -87,6 +91,13 @@ export default function PostDeployMonitor({ onUpdated, language = 'en' }) {
   const [nocNotified, setNocNotified] = useState(false);
   const [releases, setReleases] = useState([]);
   const [releasesLoading, setReleasesLoading] = useState(true);
+
+  const formatVersion = (value) => {
+    const cleaned = String(value || '').trim().replace(/^v\s*/i, '');
+    return cleaned ? `v${cleaned}` : '';
+  };
+
+  const getRollbackExecutedValue = (release) => release?.rollback_izvrsen ?? release?.rollback_izvršen ?? null;
 
   // Load releases on mount
   useEffect(() => {
@@ -119,7 +130,10 @@ export default function PostDeployMonitor({ onUpdated, language = 'en' }) {
       if (release.datum_deploymenta) setDeployDate(release.datum_deploymenta);
       if (release.monitoring_kraj) setMonitoringKraj(release.monitoring_kraj);
       if (release.pir_status) setPirStatus(release.pir_status);
-      if (release.rollback_izvrsen) setRollbackExecuted(release.rollback_izvrsen === true || release.rollback_izvrsen === 'true' ? 'true' : 'false');
+      const rollbackValue = getRollbackExecutedValue(release);
+      if (rollbackValue !== null && rollbackValue !== undefined) {
+        setRollbackExecuted(rollbackValue === true || rollbackValue === 'true' ? 'true' : 'false');
+      }
     } else {
       setReleaseData(null);
     }
@@ -143,6 +157,12 @@ export default function PostDeployMonitor({ onUpdated, language = 'en' }) {
   };
 
   const checklist = calculateChecklist();
+  const estimatedDowntimeMinutes = releaseData ? (() => {
+    if (!releaseData.datum_deploymenta || !releaseData.monitoring_kraj) return null;
+    const start = new Date(releaseData.datum_deploymenta);
+    const end = new Date(releaseData.monitoring_kraj);
+    return Math.max(0, Math.round((end - start) / (1000 * 60)));
+  })() : null;
 
   const updateGo = async () => {
     try {
@@ -217,7 +237,7 @@ export default function PostDeployMonitor({ onUpdated, language = 'en' }) {
           <select value={releaseId} onChange={(event) => setReleaseId(event.target.value)} disabled={releasesLoading}>
             <option value="">{releasesLoading ? t.releaseLoading : t.releaseSelect}</option>
             {releases.map((r) => (
-              <option key={r.id} value={r.id}>{`#${r.id} · v${r.verzija || r.verzija === 0 ? r.verzija : ''} · ${r.rfc_naziv || r.naziv || '-'}`}</option>
+              <option key={r.id} value={r.id}>{`#${r.id} · ${formatVersion(r.verzija)} · ${r.rfc_naziv || r.naziv || '-'}`}</option>
             ))}
           </select>
         </label>
@@ -253,6 +273,7 @@ export default function PostDeployMonitor({ onUpdated, language = 'en' }) {
       )}
 
       <div className="form-grid compact">
+        <p className="helper-line panel-note" style={{ gridColumn: '1 / -1' }}>{t.downtimeHint}</p>
         <label>
           {t.goNoGo}
           <select value={goNoGo} onChange={(event) => setGoNoGo(event.target.value)}>
@@ -289,6 +310,10 @@ export default function PostDeployMonitor({ onUpdated, language = 'en' }) {
           {canSchedule ? <button className="btn-secondary" type="button" onClick={updateDeploy}>{t.schedule}</button> : null}
           {canUpdatePir ? <button className="btn-primary" type="button" onClick={updatePir}>{t.updatePir}</button> : null}
           {canUpdateRollback ? <button className="btn-secondary" type="button" onClick={updateRollback}>{t.updateRollback}</button> : null}
+        </div>
+        <div className="deployment-summary">
+          <span className="deployment-summary-label">{t.downtimePreview}</span>
+          <strong className="deployment-summary-value">{estimatedDowntimeMinutes === null ? (t.pending) : `${estimatedDowntimeMinutes} min`}</strong>
         </div>
       </div>
       {message ? <p className="status-line">{message}</p> : null}

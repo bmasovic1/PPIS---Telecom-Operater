@@ -112,6 +112,13 @@ const getPirBadgeClass = (value) => {
   return 'status-open';
 };
 
+const getRollbackExecutedValue = (item) => item.rollback_izvrsen ?? item.rollback_izvršen ?? null;
+
+const formatVersion = (value) => {
+  const cleaned = String(value || '').trim().replace(/^v\s*/i, '');
+  return cleaned ? `v${cleaned}` : '-';
+};
+
 const calculateDowntimeMinutes = (startDate, endDate) => {
   if (!startDate || !endDate) return null;
   const start = new Date(startDate);
@@ -132,9 +139,10 @@ const formatDuration = (minutes) => {
 
 const buildReleaseStatus = (item) => {
   const downtimeMinutes = calculateDowntimeMinutes(item.datum_deploymenta, item.monitoring_kraj);
-  const hasRollback = item.rollback_izvrsen === true || item.rollback_izvrsen === 'true';
+  const rollbackValue = getRollbackExecutedValue(item);
+  const hasRollback = rollbackValue === true || rollbackValue === 'true';
   const hasDowntime = typeof downtimeMinutes === 'number' && downtimeMinutes > 0;
-  const isZeroDowntime = item.go_no_go === 'go' && !hasRollback && !hasDowntime;
+  const isZeroDowntime = item.go_no_go === 'go' && !hasRollback;
 
   const statusKey = isZeroDowntime
     ? 'zero_downtime'
@@ -264,7 +272,7 @@ export default function ReleaseDashboard({ language = 'en' }) {
         'Release ID': item.id,
         'RFC ID': item.rfc_id || item.change_id,
         RFC: item.rfc_naziv,
-        Version: `v${item.verzija}`,
+        Version: formatVersion(item.verzija),
         CAB: (cabLabelMap[language] || cabLabelMap.en)[item.cab_odluka || 'na_cekanju'] || t.pending,
         'Go/No-Go': (goNoGoLabelMap[language] || goNoGoLabelMap.en)[item.go_no_go || 'na_cekanju'] || t.pending,
         Status: item.statusLabel,
@@ -287,7 +295,10 @@ export default function ReleaseDashboard({ language = 'en' }) {
     const total = pipeline.length;
     const cabApproved = pipeline.filter((item) => item.cab_odluka === 'odobreno').length;
     const readyToDeploy = pipeline.filter((item) => item.go_no_go === 'go').length;
-    const rollbackDone = pipeline.filter((item) => item.rollback_izvrsen === true || item.rollback_izvrsen === 'true').length;
+    const rollbackDone = pipeline.filter((item) => {
+      const rollbackValue = getRollbackExecutedValue(item);
+      return rollbackValue === true || rollbackValue === 'true';
+    }).length;
 
     return [
       { label: language === 'bs' ? 'Ukupno' : 'Total', value: total, tone: 'accent' },
@@ -433,7 +444,7 @@ export default function ReleaseDashboard({ language = 'en' }) {
                       <td>{item.id}</td>
                       <td>{item.rfc_id || item.change_id}</td>
                       <td>{item.rfc_naziv}</td>
-                      <td><strong>v{item.verzija}</strong></td>
+                      <td><strong>{formatVersion(item.verzija)}</strong></td>
                       <td><span className={`badge ${getCabBadgeClass(item.cab_odluka)}`}>{(cabLabelMap[language] || cabLabelMap.en)[item.cab_odluka || 'na_cekanju'] || t.pending}</span></td>
                       <td><span className={`badge ${getGoNoGoBadgeClass(item.go_no_go)}`}>{(goNoGoLabelMap[language] || goNoGoLabelMap.en)[item.go_no_go || 'na_cekanju'] || t.pending}</span></td>
                       <td>

@@ -55,6 +55,8 @@ Express + PostgreSQL backend for Team 15 ITSM project.
 ## Notes
 
 - This backend expects PostgreSQL schema from the project SQL scripts.
+- KEDB create/update now expects the `kedb.opis_greske` column. Run `backend/sql/migrations/001_add_kedb_opis_greske.sql` before using the KEDB editor.
+- If Supabase created `kedb.opis_greske` as NOT NULL, also run `backend/sql/migrations/002_fix_kedb_opis_greske_constraint.sql` to backfill existing rows and drop the constraint.
 - `POST /api/release/rfc` can optionally create a matching `releases` row when `kreiraj_release=true` and release metadata is provided.
 - Column names with local characters are handled through quoted SQL identifiers.
 - Keep RLS and policies configured in Supabase before exposing direct client access.

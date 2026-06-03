@@ -5,11 +5,13 @@ const translations = {
   bs: {
     title: 'Uređivač KEDB-a',
     linkedProblem: 'Povezani problem',
+    errorDescription: 'Opis greške',
     selectProblem: 'Odaberi problem',
     status: 'Status KEDB-a',
     workaround: 'Zaobilazno rješenje',
     permanentFix: 'Trajni fix',
     saving: 'Spremanje...',
+    saved: 'KEDB unos uspješno kreiran.',
     update: 'Ažuriraj KEDB unos',
     create: 'Kreiraj KEDB unos',
     cancel: 'Otkaži uređivanje',
@@ -30,11 +32,13 @@ const translations = {
   en: {
     title: 'KEDB Editor',
     linkedProblem: 'Linked Problem',
+    errorDescription: 'Error Description',
     selectProblem: 'Select problem',
     status: 'KEDB Status',
     workaround: 'Workaround',
     permanentFix: 'Permanent Fix',
     saving: 'Saving...',
+    saved: 'KEDB entry created successfully.',
     update: 'Update KEDB Entry',
     create: 'Create KEDB Entry',
     cancel: 'Cancel Edit',
@@ -61,12 +65,14 @@ export default function KEDBView({ language = 'en' }) {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
   const [form, setForm] = useState({
     problem_id: '',
-    status: '',
+    opis_greske: '',
+    status: 'workaround_aktivan',
     workaround: '',
     trajni_fix: '',
   });
@@ -142,6 +148,7 @@ export default function KEDBView({ language = 'en' }) {
     setSelectedId(String(item.id));
     setForm({
       problem_id: item.problem_id ? String(item.problem_id) : '',
+      opis_greske: item.opis_greske || '',
       status: item.status || '',
       workaround: item.workaround || '',
       trajni_fix: item.trajni_fix || '',
@@ -152,6 +159,7 @@ export default function KEDBView({ language = 'en' }) {
     setSelectedId('');
     setForm({
       problem_id: '',
+      opis_greske: '',
       status: 'workaround_aktivan',
       workaround: '',
       trajni_fix: '',
@@ -161,12 +169,14 @@ export default function KEDBView({ language = 'en' }) {
   const submit = async (event) => {
     event.preventDefault();
     setError('');
+    setSuccess('');
     setSaving(true);
 
     try {
       if (selectedId) {
         await api.updateKedb(selectedId, {
           problem_id: Number(form.problem_id),
+          opis_greske: form.opis_greske,
           status: form.status,
           workaround: form.workaround,
           trajni_fix: form.trajni_fix,
@@ -174,6 +184,7 @@ export default function KEDBView({ language = 'en' }) {
       } else {
         await api.createKedb({
           problem_id: Number(form.problem_id),
+          opis_greske: form.opis_greske,
           status: form.status,
           workaround: form.workaround,
           trajni_fix: form.trajni_fix,
@@ -182,7 +193,9 @@ export default function KEDBView({ language = 'en' }) {
 
       await load();
       resetForm();
+      setSuccess(t.saved);
     } catch (err) {
+      setSuccess('');
       setError(err.message);
     } finally {
       setSaving(false);
@@ -191,35 +204,48 @@ export default function KEDBView({ language = 'en' }) {
 
   return (
     <section className="stack">
-      <section className="panel">
+      <section className="panel kedb-editor-panel">
         <h3 className="section-title">{t.title}</h3>
-        <form className="form-grid compact" onSubmit={submit}>
-          <label>
-            {t.linkedProblem}
-            <select value={form.problem_id} onChange={(event) => setForm((prev) => ({ ...prev, problem_id: event.target.value }))} required>
-              <option value="">{t.selectProblem}</option>
-              {filteredProblemOptions.map((problem) => (
-                <option key={problem.value} value={problem.value}>{problem.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t.status}
-            <select value={form.status} onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))} required>
-              <option value="workaround_aktivan">workaround_aktivan</option>
-              <option value="fix_u_razvoju">fix_u_razvoju</option>
-              <option value="fix_implementiran">fix_implementiran</option>
-            </select>
-          </label>
-          <label>
-            {t.workaround}
-            <textarea value={form.workaround} rows={3} onChange={(event) => setForm((prev) => ({ ...prev, workaround: event.target.value }))} required />
-          </label>
-          <label>
+        <form className="form-grid compact kedb-form" onSubmit={submit}>
+          <div className="kedb-row">
+            <label>
+              {t.linkedProblem}
+              <select value={form.problem_id} onChange={(event) => setForm((prev) => ({ ...prev, problem_id: event.target.value }))} required>
+                <option value="">{t.selectProblem}</option>
+                {filteredProblemOptions.map((problem) => (
+                  <option key={problem.value} value={problem.value}>{problem.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t.status}
+              <select value={form.status} onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))} required>
+                <option value="workaround_aktivan">workaround_aktivan</option>
+                <option value="fix_u_razvoju">fix_u_razvoju</option>
+                <option value="fix_implementiran">fix_implementiran</option>
+              </select>
+            </label>
+          </div>
+          <div className="kedb-row">
+            <label>
+              {t.errorDescription}
+              <textarea
+                value={form.opis_greske}
+                rows={3}
+                onChange={(event) => setForm((prev) => ({ ...prev, opis_greske: event.target.value }))}
+                required
+              />
+            </label>
+            <label>
+              {t.workaround}
+              <textarea value={form.workaround} rows={3} onChange={(event) => setForm((prev) => ({ ...prev, workaround: event.target.value }))} required />
+            </label>
+          </div>
+          <label className="kedb-wide-field">
             {t.permanentFix}
             <textarea value={form.trajni_fix} rows={3} onChange={(event) => setForm((prev) => ({ ...prev, trajni_fix: event.target.value }))} required />
           </label>
-          <div className="action-row">
+          <div className="action-row kedb-form-actions">
             {canEditKedb ? (
               <>
                 <button className="btn-primary" type="submit" disabled={saving}>{saving ? t.saving : selectedId ? t.update : t.create}</button>
@@ -234,6 +260,7 @@ export default function KEDBView({ language = 'en' }) {
 
       <section className="panel table-panel">
         <h3 className="section-title">{t.register}</h3>
+        {success ? <p className="status-line status-line-success">{success}</p> : null}
         {loading ? <p>{t.loading}</p> : null}
         {error ? <p className="error-line">{error}</p> : null}
         <div className="table-toolbar compact">
@@ -259,6 +286,7 @@ export default function KEDBView({ language = 'en' }) {
             <colgroup>
               <col className="col-id" />
               <col className="col-problem" />
+              <col className="col-error" />
               <col className="col-priority" />
               <col className="col-status" />
               <col className="col-workaround" />
@@ -269,6 +297,7 @@ export default function KEDBView({ language = 'en' }) {
               <tr>
                 <th>ID</th>
                 <th>{t.problem}</th>
+                <th>{t.errorDescription}</th>
                 <th>{t.priority}</th>
                 <th>{t.status}</th>
                 <th>{t.workaround}</th>
@@ -281,6 +310,7 @@ export default function KEDBView({ language = 'en' }) {
                 <tr key={item.id}>
                   <td>{item.id}</td>
                   <td>{item.problem_id}</td>
+                  <td>{item.opis_greske || '-'}</td>
                   <td><span className={`badge ${problemPriorityMap[item.problem_id] === 'P1' ? 'priority-p1' : problemPriorityMap[item.problem_id] === 'P2' ? 'priority-p2' : problemPriorityMap[item.problem_id] === 'P3' ? 'priority-p3' : 'priority-p4'}`}>{problemPriorityMap[item.problem_id] || '-'}</span></td>
                   <td><span className={`badge ${item.status === 'resolved' ? 'status-success' : item.status === 'known_error' ? 'status-warning' : 'status-open'}`}>{item.status}</span></td>
                   <td>{item.workaround || '-'}</td>

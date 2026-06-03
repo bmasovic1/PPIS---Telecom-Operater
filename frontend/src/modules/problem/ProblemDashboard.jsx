@@ -10,29 +10,7 @@ const initialForm = {
   naziv: '',
 };
 
-const priorityLabels = {
-  P1: 'P1 - Critical',
-  P2: 'P2 - High',
-  P3: 'P3 - Medium',
-  P4: 'P4 - Low',
-};
 
-const statusLabels = {
-  novo: 'New',
-  istrazivanje: 'Investigating',
-  workaround_aktivan: 'Workaround',
-  rca_zavrsen: 'RCA Done',
-  fix_u_toku: 'In Progress',
-  riješen: 'Resolved',
-  zatvoren: 'Closed',
-};
-
-const rcaMethodLabels = {
-  '5_whys': 'Analiza mrežnih logova',
-  ishikawa: 'Analiza konfiguracije',
-  fault_tree: 'Analiza pokrivenosti i signala',
-  kepner_tregoe: 'Analiza performansi mreže',
-};
 
 const closedStatuses = new Set(['riješen', 'zatvoren']);
 
@@ -57,6 +35,101 @@ const getStatusClass = (status) => {
 };
 
 export default function ProblemDashboard({ language = 'en' }) {
+  const translations = {
+    bs: {
+      selectIncident: 'Odaberite barem jedan incident.',
+      titleRequired: 'Naslov problema je obavezan.',
+      created: 'Problem je uspješno kreiran.',
+      priorityLabels: {
+        P1: 'P1 - Kritično',
+        P2: 'P2 - Visoko',
+        P3: 'P3 - Srednje',
+        P4: 'P4 - Nisko',
+      },
+      statusLabels: {
+        novo: 'Novo',
+        istrazivanje: 'Istraživanje',
+        workaround_aktivan: 'Privremeno rješenje',
+        rca_zavrsen: 'RCA završen',
+        fix_u_toku: 'U toku',
+        riješen: 'Riješen',
+        zatvoren: 'Zatvoren',
+      },
+      rcaMethodLabels: {
+        '5_whys': '5 zašto',
+        ishikawa: 'Ishikawa',
+        fault_tree: 'Fault tree',
+        kepner_tregoe: 'Kepner-Tregoe',
+      },
+      phasesTitle: 'ITIL upravljanje problemima - tri faze',
+      flowTitle: 'Tok problema',
+      problemSteps: [
+        'Zabilježi ponavljajuće incidente i dodijeli vlasništvo',
+        'Istraži uzrok uz RCA radni prostor',
+        'Kreiraj ili ažuriraj KEDB unos',
+        'Prati workaround i trajni fix',
+        'Zatvori tek nakon verifikacije i oporavka',
+      ],
+      phases: [
+        { name: 'Identifikacija problema', description: 'Otkrivanje, kategorizacija i prioritet' },
+        { name: 'Kontrola problema', description: 'Istraživanje, dijagnostika i analiza uzroka' },
+        { name: 'Kontrola grešaka', description: 'Implementacija workaround-a, deploy i zatvaranje' },
+      ],
+      open: 'Otvoreno',
+      closed: 'Zatvoreno',
+      titleLabel: 'Naslov',
+      noTitle: 'Bez naslova',
+    },
+    en: {
+      selectIncident: 'Select at least one incident.',
+      titleRequired: 'Problem Title is required.',
+      created: 'Problem created successfully.',
+      priorityLabels: {
+        P1: 'P1 - Critical',
+        P2: 'P2 - High',
+        P3: 'P3 - Medium',
+        P4: 'P4 - Low',
+      },
+      statusLabels: {
+        novo: 'New',
+        istrazivanje: 'Investigating',
+        workaround_aktivan: 'Workaround',
+        rca_zavrsen: 'RCA Done',
+        fix_u_toku: 'In Progress',
+        riješen: 'Resolved',
+        zatvoren: 'Closed',
+      },
+      rcaMethodLabels: {
+        '5_whys': '5 Whys',
+        ishikawa: 'Ishikawa',
+        fault_tree: 'Fault tree',
+        kepner_tregoe: 'Kepner-Tregoe',
+      },
+      phasesTitle: 'ITIL Problem Management — Three Phases',
+      flowTitle: 'Problem Flow',
+      problemSteps: [
+        'Capture repeated incidents and assign ownership',
+        'Investigate root cause with RCA workspace',
+        'Create or update KEDB knowledge entry',
+        'Track workaround and permanent fix',
+        'Close only after verification and recovery',
+      ],
+      phases: [
+        { name: 'Problem Identification', description: 'Discovery, categorization, and prioritization of problems' },
+        { name: 'Problem Control', description: 'Investigation, diagnostics, and root cause analysis' },
+        { name: 'Error Control', description: 'Workaround implementation, fix deployment, and closure' },
+      ],
+      open: 'Open',
+      closed: 'Closed',
+      titleLabel: 'Title',
+      noTitle: 'Untitled',
+    },
+  };
+
+  const t = translations[language] || translations.en;
+  const priorityLabels = t.priorityLabels || {};
+  const statusLabels = t.statusLabels || {};
+  const rcaMethodLabels = t.rcaMethodLabels || {};
   const [activeProblems, setActiveProblems] = useState([]);
   const [trend, setTrend] = useState([]);
   const [message, setMessage] = useState('');
@@ -193,27 +266,17 @@ export default function ProblemDashboard({ language = 'en' }) {
     }));
   }, [incidents]);
 
+  const incidentLookup = useMemo(() => {
+    return new Map(incidents.map((incident) => [String(incident.id), incident]));
+  }, [incidents]);
+
   const filteredIncidentOptions = useMemo(() => {
     const query = incidentSearch.trim().toLowerCase();
     if (!query) return incidentOptions;
     return incidentOptions.filter((item) => item.label.toLowerCase().includes(query));
   }, [incidentOptions, incidentSearch]);
 
-  const problemSteps = language === 'bs'
-    ? [
-        'Zabilježi ponavljajuće incidente i dodijeli vlasništvo',
-        'Istraži uzrok uz RCA radni prostor',
-        'Kreiraj ili ažuriraj KEDB unos',
-        'Prati workaround i trajni fix',
-        'Zatvori tek nakon verifikacije i oporavka',
-      ]
-    : [
-        'Capture repeated incidents and assign ownership',
-        'Investigate root cause with RCA workspace',
-        'Create or update KEDB knowledge entry',
-        'Track workaround and permanent fix',
-        'Close only after verification and recovery',
-      ];
+  const problemSteps = t.problemSteps || [];
 
   const metrics = useMemo(() => {
     const counts = { P1: 0, P2: 0, P3: 0, P4: 0 };
@@ -228,8 +291,8 @@ export default function ProblemDashboard({ language = 'en' }) {
     const closedCount = allProblems.length - openCount;
 
     return [
-      { label: language === 'bs' ? 'Otvoreno' : 'Open', value: openCount, tone: 'accent' },
-      { label: language === 'bs' ? 'Zatvoreno' : 'Closed', value: closedCount, tone: 'muted' },
+      { label: t.open || (language === 'bs' ? 'Otvoreno' : 'Open'), value: openCount, tone: 'accent' },
+      { label: t.closed || (language === 'bs' ? 'Zatvoreno' : 'Closed'), value: closedCount, tone: 'muted' },
       { label: 'P1', value: counts.P1, tone: 'critical' },
       { label: 'P2', value: counts.P2, tone: 'high' },
       { label: 'P3', value: counts.P3, tone: 'medium' },
@@ -278,12 +341,12 @@ export default function ProblemDashboard({ language = 'en' }) {
       const uniqueIncidents = [...new Set(form.incident_ids)];
 
       if (!uniqueIncidents.length) {
-        setMessage('Select at least one incident.');
+        setMessage(t.selectIncident);
         return;
       }
 
       if (!form.naziv || !form.naziv.trim()) {
-        setMessage('Problem Title is required.');
+        setMessage(t.titleRequired);
         return;
       }
 
@@ -300,7 +363,7 @@ export default function ProblemDashboard({ language = 'en' }) {
 
       setForm(initialForm);
       setIncidentSearch('');
-      setMessage('Problem created successfully.');
+      setMessage(t.created);
       loadOverview();
     } catch (error) {
       setMessage(error.message);
@@ -323,36 +386,32 @@ export default function ProblemDashboard({ language = 'en' }) {
     const phase1 = allProblems.filter((p) => ['novo', 'istrazivanje'].includes(p.status)).length;
     const phase2 = allProblems.filter((p) => ['istrazivanje', 'rca_zavrsen'].includes(p.status)).length;
     const phase3 = allProblems.filter((p) => ['workaround_aktivan', 'fix_u_toku', 'riješen', 'zatvoren'].includes(p.status)).length;
-    
-    return [
-      {
-        name: 'Problem Identification',
-        description: 'Discovery, categorization, and prioritization of problems',
-        count: phase1,
-        tone: 'accent',
-        bgClass: 'phase-identification',
-      },
-      {
-        name: 'Problem Control',
-        description: 'Investigation, diagnostics, and root cause analysis',
-        count: phase2,
-        tone: 'high',
-        bgClass: 'phase-control',
-      },
-      {
-        name: 'Error Control',
-        description: 'Workaround implementation, fix deployment, and closure',
-        count: phase3,
-        tone: 'success',
-        bgClass: 'phase-error-control',
-      },
-    ];
+    const phaseTemplates = (t.phases && t.phases.length === 3)
+      ? t.phases
+      : [
+        { name: 'Problem Identification', description: 'Discovery, categorization, and prioritization of problems' },
+        { name: 'Problem Control', description: 'Investigation, diagnostics, and root cause analysis' },
+        { name: 'Error Control', description: 'Workaround implementation, fix deployment, and closure' },
+      ];
+
+    return phaseTemplates.map((tpl, idx) => {
+      const count = idx === 0 ? phase1 : idx === 1 ? phase2 : phase3;
+      const tone = idx === 0 ? 'accent' : idx === 1 ? 'high' : 'success';
+      const bgClass = idx === 0 ? 'phase-identification' : idx === 1 ? 'phase-control' : 'phase-error-control';
+      return {
+        name: tpl.name,
+        description: tpl.description,
+        count,
+        tone,
+        bgClass,
+      };
+    });
   };
 
   return (
     <div className="stack single-column">
       <section className="panel phases-panel">
-        <h3 className="section-title">{language === 'bs' ? 'ITIL upravljanje problemima - tri faze' : 'ITIL Problem Management — Three Phases'}</h3>
+        <h3 className="section-title">{t.phasesTitle || (language === 'bs' ? 'ITIL upravljanje problemima - tri faze' : 'ITIL Problem Management — Three Phases')}</h3>
         <div className="phases-grid">
           {calculatePhases().map((phase) => (
             <article key={phase.name} className={`phase-card ${phase.bgClass}`}>
@@ -372,7 +431,7 @@ export default function ProblemDashboard({ language = 'en' }) {
       </section>
 
       <section className="panel process-panel">
-        <h3 className="section-title">{language === 'bs' ? 'Tok problema' : 'Problem Flow'}</h3>
+        <h3 className="section-title">{t.flowTitle || (language === 'bs' ? 'Tok problema' : 'Problem Flow')}</h3>
         <div className="process-steps">
           {problemSteps.map((step, index) => (
             <div className="process-step" key={step}>
@@ -382,10 +441,10 @@ export default function ProblemDashboard({ language = 'en' }) {
           ))}
         </div>
         <div className="status-legend">
-          <span className="legend-item"><span className="legend-swatch priority-p1" />P1 {language === 'bs' ? 'Kritičan' : 'Critical'}</span>
-          <span className="legend-item"><span className="legend-swatch priority-p2" />P2 {language === 'bs' ? 'Visok' : 'High'}</span>
-          <span className="legend-item"><span className="legend-swatch priority-p3" />P3 {language === 'bs' ? 'Srednji' : 'Medium'}</span>
-          <span className="legend-item"><span className="legend-swatch priority-p4" />P4 {language === 'bs' ? 'Nizak' : 'Low'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p1" />{priorityLabels.P1 || 'P1'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p2" />{priorityLabels.P2 || 'P2'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p3" />{priorityLabels.P3 || 'P3'}</span>
+          <span className="legend-item"><span className="legend-swatch priority-p4" />{priorityLabels.P4 || 'P4'}</span>
         </div>
       </section>
 
@@ -535,6 +594,7 @@ export default function ProblemDashboard({ language = 'en' }) {
               <table className="active-problems-table">
                 <colgroup>
                   <col className="col-id" />
+                  <col className="col-title" />
                   <col className="col-status" />
                   <col className="col-priority" />
                   <col className="col-assigned" />
@@ -544,6 +604,7 @@ export default function ProblemDashboard({ language = 'en' }) {
                 <thead>
                   <tr>
                     <th>ID</th>
+                    <th>{t.titleLabel || (language === 'bs' ? 'Naslov' : 'Title')}</th>
                     <th>Status</th>
                     <th>Priority</th>
                     <th>Assigned</th>
@@ -554,7 +615,13 @@ export default function ProblemDashboard({ language = 'en' }) {
                 <tbody>
                   {filteredProblems.map((item) => (
                     <tr key={item.id}>
-                        <td>{item.id}</td>
+                      <td>{item.id}</td>
+                      <td>
+                        {(() => {
+                          const incident = incidentLookup.get(String(item.incident_id));
+                          return incident ? formatIncidentLabel(incident) : (t.noTitle || (language === 'bs' ? 'Bez naslova' : 'Untitled'));
+                        })()}
+                      </td>
                       <td><span className={`badge active-badge ${getStatusClass(item.status)}`}>{statusLabels[item.status] || item.status}</span></td>
                       <td><span className={`badge active-badge ${priorityClassMap[item.prioritet] || 'priority-p4'}`}>{priorityLabels[item.prioritet] || item.prioritet}</span></td>
                       <td className="assigned-cell">{item.ime || item.dodijeljen_id ? `${item.ime || ''} ${item.prezime || ''}`.trim() : '-'}</td>
@@ -564,7 +631,7 @@ export default function ProblemDashboard({ language = 'en' }) {
                   ))}
                   {!filteredProblems.length ? (
                     <tr>
-                      <td colSpan={6}>No problems match the selected filters.</td>
+                      <td colSpan={7}>No problems match the selected filters.</td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -575,33 +642,20 @@ export default function ProblemDashboard({ language = 'en' }) {
           <section className="panel table-panel">
             <h3 className="section-title">Incident Trend (30 Days)</h3>
             <div className="trend-chart">
-              {trendChartData.map((item) => (
-                <div className="trend-row" key={item.day}>
-                  <span className="trend-day">{item.day}</span>
-                  <div className="trend-bar-track">
-                    <div className="trend-bar-fill" style={{ width: `${item.width}%` }} />
-                  </div>
-                  <span className="trend-value">{item.value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="table-wrap trend-table-wrap">
-              <table className="trend-table">
-                <thead>
-                  <tr>
-                    <th>Day</th>
-                    <th>Incidents</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trend.map((item) => (
-                    <tr key={item.dan}>
-                      <td>{new Date(item.dan).toLocaleDateString()}</td>
-                      <td>{item.broj}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  {trendChartData.length ? trendChartData.map((item) => (
+                    <div className="trend-row" key={item.day}>
+                      <span className="trend-day">{item.day}</span>
+                      <div className="trend-bar-track">
+                        <div className="trend-bar-fill" style={{ width: `${item.width}%` }} />
+                      </div>
+                      <span className="trend-value">{item.value}</span>
+                    </div>
+                  )) : (
+                    <div className="empty-state compact">
+                      <strong>{language === 'bs' ? 'Nema trend podataka' : 'No trend data available'}</strong>
+                      <span>{language === 'bs' ? 'Trend se puni iz incidenata iz posljednjih 30 dana.' : 'The chart is based on incidents created in the last 30 days.'}</span>
+                    </div>
+                  )}
             </div>
           </section>
         </div>

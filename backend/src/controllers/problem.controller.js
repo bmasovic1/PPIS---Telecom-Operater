@@ -319,33 +319,56 @@ const getKedbById = async (req, res) => {
 
 const updateKedb = async (req, res) => {
   const { id } = req.params;
-  const { workaround, trajni_fix, status } = req.body;
+  const { opis_greske, workaround, trajni_fix, status } = req.body;
+  const safeOpisGreske = typeof opis_greske === 'string' ? opis_greske.trim() : '';
+  const safeWorkaround = typeof workaround === 'string' ? workaround.trim() : '';
+  const safeTrajniFix = typeof trajni_fix === 'string' ? trajni_fix.trim() : '';
+  const safeStatus = typeof status === 'string' && status.trim() ? status.trim() : 'workaround_aktivan';
 
   if (!isPositiveInt(id)) {
     return res.status(400).json({ error: 'Neispravan KEDB id.' });
   }
 
-  const { rows } = await pool.query(
-    `UPDATE kedb
-     SET workaround = COALESCE($1, workaround),
-         trajni_fix = COALESCE($2, trajni_fix),
-         status = COALESCE($3, status)
-     WHERE id = $4
-     RETURNING *`,
-    [workaround || null, trajni_fix || null, status || null, id]
-  );
+  try {
+    const { rows } = await pool.query(
+      `UPDATE kedb
+       SET "opis_greške" = COALESCE(NULLIF($1, ''), "opis_greške"),
+         opis_greske = COALESCE(NULLIF($1, ''), opis_greske),
+         workaround = COALESCE(NULLIF($2, ''), workaround),
+         trajni_fix = COALESCE(NULLIF($3, ''), trajni_fix),
+         status = COALESCE(NULLIF($4, ''), status)
+       WHERE id = $5
+       RETURNING *`,
+      [safeOpisGreske, safeWorkaround, safeTrajniFix, safeStatus, id]
+    );
 
-  if (!rows.length) {
-    return res.status(404).json({ error: 'KEDB zapis nije pronadjen.' });
+    if (!rows.length) {
+      return res.status(404).json({ error: 'KEDB zapis nije pronadjen.' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('KEDB update failed:', { id, body: req.body, code: error.code, message: error.message });
+    throw error;
   }
-
-  res.json(rows[0]);
 };
 
 const createKedb = async (req, res) => {
-  const { problem_id, workaround, trajni_fix, status } = req.body;
+  const { problem_id, opis_greske, workaround, trajni_fix, status } = req.body;
+  const safeOpisGreske = typeof opis_greske === 'string' ? opis_greske.trim() : '';
+  const safeWorkaround = typeof workaround === 'string' ? workaround.trim() : '';
+  const safeTrajniFix = typeof trajni_fix === 'string' ? trajni_fix.trim() : '';
+  const safeStatus = typeof status === 'string' && status.trim() ? status.trim() : 'workaround_aktivan';
 
-  const missing = requireFields(req.body, ['problem_id', 'workaround', 'trajni_fix', 'status']);
+  console.log('KEDB create payload', {
+    problem_id,
+    opis_greske: safeOpisGreske,
+    workaround: safeWorkaround,
+    trajni_fix: safeTrajniFix,
+    status: safeStatus,
+  });
+
+  const missing = requireFields(req.body, ['problem_id', 'opis_greske', 'workaround', 'trajni_fix']);
   if (missing.length) {
     return res.status(400).json({ error: `Nedostaju obavezna polja: ${missing.join(', ')}` });
   }
@@ -354,14 +377,19 @@ const createKedb = async (req, res) => {
     return res.status(400).json({ error: 'Neispravan problem id.' });
   }
 
-  const { rows } = await pool.query(
-    `INSERT INTO kedb (problem_id, workaround, trajni_fix, status)
-     VALUES ($1, $2, $3, $4)
-     RETURNING *`,
-    [problem_id, workaround, trajni_fix, status]
-  );
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO kedb (problem_id, "opis_greške", opis_greske, workaround, trajni_fix, status)
+       VALUES ($1, $2, $2, $3, $4, $5)
+       RETURNING *`,
+      [problem_id, safeOpisGreske, safeWorkaround, safeTrajniFix, safeStatus]
+    );
 
-  res.status(201).json(rows[0]);
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('KEDB create failed:', { body: req.body, code: error.code, message: error.message });
+    throw error;
+  }
 };
 
 module.exports = {

@@ -1,5 +1,12 @@
 function errorHandler(err, req, res, next) {
   // eslint-disable-line no-unused-vars
+  console.error('API error:', {
+    code: err.code,
+    detail: err.detail,
+    constraint: err.constraint,
+    message: err.message,
+  });
+
   if (err.code === '23503') {
     return res.status(400).json({ error: 'Pogresna veza podataka (FK provjera nije prosla).' });
   }

@@ -1,6 +1,20 @@
 const pool = require('../db/pool');
 const { requireFields, isPositiveInt } = require('../utils/validators');
 
+const normalizeVersion = (value) => {
+  if (typeof value !== 'string') return value;
+  return value.trim().replace(/^v\s*/i, '');
+};
+
+const normalizeReleaseRow = (row) => {
+  if (!row) return row;
+
+  return {
+    ...row,
+    rollback_izvrsen: row.rollback_izvrsen ?? row.rollback_izvršen ?? null,
+  };
+};
+
 const getPipeline = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT
@@ -24,7 +38,7 @@ const getPipeline = async (req, res) => {
      ORDER BY r.kreiran_u DESC`
   );
 
-  res.json(rows);
+  res.json(rows.map(normalizeReleaseRow));
 };
 
 const getRfcs = async (req, res) => {
@@ -75,7 +89,7 @@ const getRfcById = async (req, res) => {
 
   res.json({
     ...rfcResult.rows[0],
-    release: releaseResult.rows[0] || null,
+    release: normalizeReleaseRow(releaseResult.rows[0] || null),
   });
 };
 
@@ -138,18 +152,20 @@ const createRfc = async (req, res) => {
         });
       }
 
+      const sanitizedVersion = normalizeVersion(release_verzija);
+
       const releaseInsert = await client.query(
         `INSERT INTO releases (change_id, kreirao_id, verzija, "okruženje")
          VALUES ($1, $2, $3, $4)
          RETURNING *`,
-        [change.id, release_kreirao_id, release_verzija, release_okruzenje || 'staging']
+        [change.id, release_kreirao_id, sanitizedVersion, release_okruzenje || 'staging']
       );
 
-      release = releaseInsert.rows[0];
+      release = normalizeReleaseRow(releaseInsert.rows[0]);
     }
 
     await client.query('COMMIT');
-    res.status(201).json({ ...change, release });
+    res.status(201).json({ ...change, release: normalizeReleaseRow(release) });
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -247,7 +263,7 @@ const updateGoNoGo = async (req, res) => {
       return res.status(404).json({ error: 'Release nije pronadjen.' });
     }
 
-    res.json(rows[0]);
+    res.json(normalizeReleaseRow(rows[0]));
   } catch (dbErr) {
     // If a DB trigger or constraint raises an error, return the message to the client
     console.error('DB error updating go_no_go for release', id, dbErr.message || dbErr);
@@ -280,7 +296,7 @@ const scheduleDeploy = async (req, res) => {
     return res.status(404).json({ error: 'Release nije pronadjen.' });
   }
 
-  res.json(rows[0]);
+  res.json(normalizeReleaseRow(rows[0]));
 };
 
 const updatePir = async (req, res) => {
@@ -307,7 +323,7 @@ const updatePir = async (req, res) => {
     return res.status(404).json({ error: 'Release nije pronadjen.' });
   }
 
-  res.json(rows[0]);
+  res.json(normalizeReleaseRow(rows[0]));
 };
 
 const updateRollback = async (req, res) => {
@@ -330,7 +346,7 @@ const updateRollback = async (req, res) => {
     return res.status(404).json({ error: 'Release nije pronadjen.' });
   }
 
-  res.json(rows[0]);
+  res.json(normalizeReleaseRow(rows[0]));
 };
 
 module.exports = {
